@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+  <script src="utils.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.5.0/Chart.js"></script>
+  <link rel="stylesheet" href="style.css">
+  <body>
+    <h1>Input Latency Deep Reports Analysis</h1>
+    <h2><i>kdillon@chromium.org</i></h2>
+    <h3>1 April 2019</h3>
+
+    <p>The data for these graphs was gathered from deep reports which contain trace data from employees during regular use. 
+    The graphs show what the main thread of the renderer is doing during a given input latency event. The duration of an 
+    input latency event starts when that event is dispatched from the browser to the renderer and ends when the rendering effect
+    is scheduled. All data is from traces that took longer than 100ms.</p>
+    
+    <p>Queuing time is the time from when the event is dispatched to the renderer to when the renderer begins to handle the event.</p>
+
+    <p>Handling time is the time from when the renderer begins to handle the event to when the rendering effect is scheduled.</p>
+
+    <p>There are two graphs per latency event. Trace events are represented as a stack; if event a calls event b, event a is the 
+    parent to b and b is shown under a. One graph shows the bottom layer of the events, 'Bottom-Up', and the other graph shows the 
+    top layer of events, 'Top-Down'. This gives a view of what the renderer is doing underneath as well as on the surface level.</p>
+
+    <script>
+      generateGraph('gestureScrollBegin', 'Gesture Scroll Begin: Bottom-Up');
+      generateGraph('gestureScrollBeginTD', 'Gesture Scroll Begin: Top-Down');
+      generateGraph('gestureScrollUpdate', 'Gesture Scroll Update: Bottom-Up');
+      generateGraph('gestureScrollUpdateTD', 'Gesture Scroll Update: Top-Down')
+      generateGraph('gestureTap', 'Gesture Tap: Bottom-Up');
+      generateGraph('gestureTapTD', 'Gesture Tap: Top-Down');
+    </script>
+  </body>
+</html>

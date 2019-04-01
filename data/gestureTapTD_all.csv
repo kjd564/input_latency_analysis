@@ -1,0 +1,20 @@
+ResourceDispatcher::OnRequestComplete,359.9634622
+rendererIdle,208.0293772
+EventHandler::handleGestureEvent,202.1026144
+ParseHTML,162.0542139
+TaskQueueManager::DoWork,110.8070893
+network.mojom.URLLoaderClient,100.0253218
+TimerBase::run,86.54042715
+FrameMsg_JavaScriptExecuteRequest,77.45591816
+EventDispatch,54.68173063
+EventHandler::targetGestureEvent,49.70228549
+EvaluateScript,48.95465437
+AccessibilityMsg_EventBundle_ACK,40.64703503
+HTMLParserScriptRunner::executeScriptsWaitingForLoad,36.57431897
+WebViewImpl::updateAllLifecyclePhases,35.45996218
+unknown interface,26.20446435
+RenderAccessibilityImpl::SendPendingAccessibilityEvents,22.63622629
+WebViewImpl::beginFrame,14.38049473
+network.mojom.WebSocketClient,13.6098943
+RenderWidget::willBeginCompositorFrame,12.59894141
+other,109.6657157

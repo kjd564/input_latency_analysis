@@ -1,0 +1,20 @@
+TaskQueueManager::DoWork,78.31702957
+rendererIdle,72.16794468
+TimerBase::run,67.11870271
+EvaluateScript,58.16929629
+EventDispatch,46.7400309
+ParseHTML,41.71126738
+network::mojom::URLLoaderClient,41.59701942
+ResourceDispatcher::OnRequestComplete,38.62591393
+WebViewImpl::beginFrame,34.89019345
+WebViewImpl::updateAllLifecyclePhases,33.33533569
+AccessibilityMsg_EventBundle_ACK,27.37108552
+HTMLParserScriptRunner::executeScriptsWaitingForLoad,18.98164268
+unknown interface,17.67644372
+RenderAccessibilityImpl::SendPendingAccessibilityEvents,11.94154028
+network.mojom.URLLoaderClient,11.71210207
+EventHandler::handleGestureScrollEvent,10.641825
+ProxyMain::BeginMainFrame::commit,7.361240786
+EventHandler::targetGestureEvent,6.816557824
+RunTask,5.722015008
+other,46.79582818
