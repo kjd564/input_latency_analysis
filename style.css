@@ -2,25 +2,26 @@ h1 {
   text-align: center;
   font-family: Helvetica;
   color: #666666;
+  font-size: 50px;
 }
 
 h2 {
    text-align: center;
    font-family: Helvetica;
-   font-size: 70%;
+   font-size: 25px;
    color: #939393;
 }
 
 h3 {
    text-align: center;
    font-family: Helvetica;
-   font-size: 60%;
+   font-size: 30px;
    color: #666666;
 }
 
 p {
   font-family: Helvetica;
-  font-size: 50%;
+  font-size: 18px;
   padding-left: 35px;	
   padding-right: 35px;		
 }

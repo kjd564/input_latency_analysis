@@ -73,6 +73,7 @@ function addDataPerEvent(events, data, label_index) {
     }
     data.datasets[index].data[label_index] = events[event];
     data.datasets[index].backgroundColor = COLORS[index];
+    data.datasets[index].fontSize = 20;
   }
 }
 
@@ -127,24 +128,37 @@ function createChart(input_event, title, event_data) {
     options: {
       title: {
         display: true,
-	text: title
+	text: title,
+	fontSize: 30,
       },
       legend: {
         display: false,
 	position: 'bottom',
+	labels: {
+	  fontSize: 15,
+	},
+      },
+      tooltips: {
+        titleFontSize: 20,
+	bodyFontSize: 20,
       },
       scales: {
         yAxes: [{
 	  stacked: true,
+	  ticks: {
+	    fontSize: 20,
+	  },
 	}],
 	xAxes: [{
 	  stacked: true,
 	  ticks: {
-	    max:1.0
+	    max:1.0,
+	    fontSize: 20,
 	  },
 	  scaleLabel: {
 	    display: true,
-	    labelString: 'duration (%)'
+	    labelString: 'duration (%)',
+	    fontSize: 20,
 	  }
 	}],
       }
@@ -153,6 +167,7 @@ function createChart(input_event, title, event_data) {
 
   // Button to toggle the legend
   var legend = document.createElement("button");
+  legend.setAttribute("style", "font-size:20px;");
   legend.innerHTML = "Toggle Legend"; 
   legend.onclick = function() {
     toggleLegend(chart);
@@ -161,6 +176,7 @@ function createChart(input_event, title, event_data) {
 
   // Button to change between raw and normalized data
   var rep = document.createElement("button");
+  rep.setAttribute("style", "font-size:20px;");
   rep.innerHTML = "Raw Data";
   rep.onclick = function() {
     toggleDataType(rep, input_event, chart);
