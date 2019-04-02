@@ -15,6 +15,7 @@ const COLORS = ["#a1455d", "#e27d8f", "#dc425b", "#ac4b3b",
 		"#9c4d87", "#d74590"];
 
 var GRAPH_DATA = {};
+var GRAPHS = {};
 
 async function generateGraph(input_event, title) {
   var raw = {labels: ['all', 'queue', 'handle'], datasets:[]};
@@ -39,7 +40,7 @@ async function generateGraph(input_event, title) {
   addDataPerEvent(handle_parsed, raw, LABEL_INDICES.handle);
   addDataPerEvent(normalize(handle_parsed), normalized, LABEL_INDICES.handle);
 
-  createChart(input_event, title, normalized);
+  createChart(input_event, title, raw);
 }
 
 function parseCSVdata(data) {
@@ -96,29 +97,50 @@ function toggleLegend(chart) {
   chart.update();
 }
 
-function toggleDataType(but, input_event,  chart) {
-  if (but.innerHTML === "Normalized Data") {
+function toggleDataType(input_event, chart, normalize) {
+  if (normalize) {
     chart.config.data = GRAPH_DATA[input_event].normal;
-    but.innerHTML = "Raw Data";
     chart.config.options.scales.xAxes[0].ticks.max = 1;
     chart.config.options.scales.xAxes[0].scaleLabel.labelString = 'duration (%)';
   } else {
     chart.config.data = GRAPH_DATA[input_event].raw;
-    but.innerHTML = "Normalized Data";
     chart.config.options.scales.xAxes[0].ticks.max = 2500
     chart.config.options.scales.xAxes[0].scaleLabel.labelString = 'duration (ms)';
   }
   chart.update();
 }
 
+function toggleLegendAll() {
+    for (c in GRAPHS) {
+	toggleLegend(GRAPHS[c]);
+    }
+}
+
+function toggleDataTypeAll() {
+    var button = document.getElementById("dataButton");
+    var normalize;
+    if (button.innerHTML === "Raw Data") {
+	button.innerHTML = "Normalized Data";
+	normalize = false;
+    } else {
+	console.log(button.innerHTML);
+	button.innerHTML = "Raw Data";
+	normalize = true;
+    }
+
+    for (c in GRAPHS) {
+	toggleDataType(c, GRAPHS[c], normalize);
+    }
+}
+
 // Creates div and adds a canvas with the cart to that div
 // Also adds buttons for toggling the legend on and off and 
 // switching between normalized and raw data.
 function createChart(input_event, title, event_data) {
-  var div = document.createElement('div');
-  div.setAttribute("id", input_event);
+  var div = document.getElementById(input_event);
 
   var canvas = document.createElement("CANVAS");
+  canvas.setAttribute("id", input_event + "_canvas");
   div.appendChild(canvas);
     
   var ctx = canvas.getContext("2d");
@@ -152,7 +174,7 @@ function createChart(input_event, title, event_data) {
 	xAxes: [{
 	  stacked: true,
 	  ticks: {
-	    max:1.0,
+	    max: 2500,
 	    fontSize: 20,
 	  },
 	  scaleLabel: {
@@ -164,24 +186,5 @@ function createChart(input_event, title, event_data) {
       }
     },
   });
-
-  // Button to toggle the legend
-  var legend = document.createElement("button");
-  legend.setAttribute("style", "font-size:20px;");
-  legend.innerHTML = "Toggle Legend"; 
-  legend.onclick = function() {
-    toggleLegend(chart);
-  };
-  div.appendChild(legend);
-
-  // Button to change between raw and normalized data
-  var rep = document.createElement("button");
-  rep.setAttribute("style", "font-size:20px;");
-  rep.innerHTML = "Raw Data";
-  rep.onclick = function() {
-    toggleDataType(rep, input_event, chart);
-  };
-  div.appendChild(rep);
-    
-  document.body.appendChild(div);
+  GRAPHS[input_event] = chart;
 }

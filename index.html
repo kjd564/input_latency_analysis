@@ -21,6 +21,18 @@
     parent to b and b is shown under a. One graph shows the bottom layer of the events, 'Bottom-Up', and the other graph shows the 
     top layer of events, 'Top-Down'. This gives a view of what the renderer is doing underneath as well as on the surface level.</p>
 
+    <div style="text-align: center;">
+      <button id="legendButton" style="font-size:20px;" onclick="toggleLegendAll()">Toggle Legends</button> 
+      <button id="dataButton" style="font-size:20px;" onclick="toggleDataTypeAll()">Normalized Data</button>
+    </div>
+
+    <div id='gestureScrollBegin'></div>
+    <div id='gestureScrollBeginTD'></div>
+    <div id='gestureScrollUpdate'></div>
+    <div id='gestureScrollUpdateTD'></div>
+    <div id='gestureTap'></div>
+    <div id='gestureTapTD'></div>
+
     <script>
       generateGraph('gestureScrollBegin', 'Gesture Scroll Begin: Bottom-Up');
       generateGraph('gestureScrollBeginTD', 'Gesture Scroll Begin: Top-Down');
