@@ -6,7 +6,7 @@
   <body>
     <h1>Input Latency Deep Reports Analysis</h1>
     <h2><i>kdillon@chromium.org</i></h2>
-    <h3>1 April 2019</h3>
+    <h3>4 April 2019</h3>
 
     <p>The data for these graphs was gathered from deep reports which contain trace data from employees during regular use. 
     The graphs show what the main thread of the renderer is doing during a given input latency event. The duration of an 
@@ -17,13 +17,18 @@
 
     <p>Handling time is the time from when the renderer begins to handle the event to when the rendering effect is scheduled.</p>
 
+    <p>RendererIdle time is calculated as the time whenever the renderer is not doing anything.</p>
+
+    <p>Input latency trace event visualization:</p>
+    <div style="text-align: center; padding-right: 5%"><img src="images/inputLatencyTraceDrawing.jpg"></img></div>
+
     <p>There are two graphs per latency event. Trace events are represented as a stack; if event a calls event b, event a is the 
     parent to b and b is shown under a. One graph shows the bottom layer of the events, 'Bottom-Up', and the other graph shows the 
     top layer of events, 'Top-Down'. This gives a view of what the renderer is doing underneath as well as on the surface level.</p>
 
     <div style="text-align: center;">
       <button id="legendButton" style="font-size:20px;" onclick="toggleLegendAll()">Toggle Legends</button> 
-      <button id="dataButton" style="font-size:20px;" onclick="toggleDataTypeAll()">Normalized Data</button>
+      <button id="dataButton" style="font-size:20px;" onclick="toggleDataTypeAll()">Normalized Values</button>
     </div>
 
     <div id='gestureScrollBegin'></div>

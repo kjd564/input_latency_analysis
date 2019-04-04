@@ -104,7 +104,7 @@ function toggleDataType(input_event, chart, normalize) {
     chart.config.options.scales.xAxes[0].scaleLabel.labelString = 'duration (%)';
   } else {
     chart.config.data = GRAPH_DATA[input_event].raw;
-    chart.config.options.scales.xAxes[0].ticks.max = 2500
+    chart.config.options.scales.xAxes[0].ticks.max = 1400
     chart.config.options.scales.xAxes[0].scaleLabel.labelString = 'duration (ms)';
   }
   chart.update();
@@ -119,12 +119,12 @@ function toggleLegendAll() {
 function toggleDataTypeAll() {
     var button = document.getElementById("dataButton");
     var normalize;
-    if (button.innerHTML === "Raw Data") {
-	button.innerHTML = "Normalized Data";
+    if (button.innerHTML === "Raw Values") {
+	button.innerHTML = "Normalized Values";
 	normalize = false;
     } else {
 	console.log(button.innerHTML);
-	button.innerHTML = "Raw Data";
+	button.innerHTML = "Raw Values";
 	normalize = true;
     }
 
@@ -174,7 +174,7 @@ function createChart(input_event, title, event_data) {
 	xAxes: [{
 	  stacked: true,
 	  ticks: {
-	    max: 2500,
+	    max: 1400,
 	    fontSize: 20,
 	  },
 	  scaleLabel: {
