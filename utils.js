@@ -104,7 +104,7 @@ function toggleDataType(input_event, chart, normalize) {
     chart.config.options.scales.xAxes[0].scaleLabel.labelString = 'duration (%)';
   } else {
     chart.config.data = GRAPH_DATA[input_event].raw;
-    chart.config.options.scales.xAxes[0].ticks.max = 1200
+    chart.config.options.scales.xAxes[0].ticks.max = 1400
     chart.config.options.scales.xAxes[0].scaleLabel.labelString = 'duration (ms)';
   }
   chart.update();
@@ -174,12 +174,12 @@ function createChart(input_event, title, event_data) {
 	xAxes: [{
 	  stacked: true,
 	  ticks: {
-	    max: 1200,
+	    max: 1400,
 	    fontSize: 20,
 	  },
 	  scaleLabel: {
 	    display: true,
-	    labelString: 'duration (%)',
+	    labelString: 'duration (ms)',
 	    fontSize: 20,
 	  }
 	}],

@@ -8,7 +8,7 @@
     <h2><i>kdillon@chromium.org</i></h2>
     <h3>4 April 2019</h3>
 
-    <p>The data for these graphs was gathered from real-world trace collected during regular use. 
+    <p>The data for these graphs was gathered from real-world trace collected during regular use on Android. 
     The graphs show what the main thread of the renderer is doing during a given input latency event. The duration of an 
     input latency event starts when that event is dispatched from the browser to the renderer and ends when the rendering effect
     is scheduled. All data is from traces that took longer than 100ms.</p>
@@ -20,8 +20,8 @@
     <p>Input latency trace event visualization:</p>
     <div style="text-align: center; padding-right: 5%"><img src="images/inputLatencyTraceDrawing.jpg"></img></div>
 
-    <p>There are two graphs per latency event. Trace events are represented as a stack; if event a calls event b, event a is the 
-    parent to b and b is shown under a. One graph shows the bottom layer of the events, 'Bottom-Up', and the other graph shows the 
+    <p>There are two graphs per latency event. Trace events are represented as a stack; if 'event a' calls 'event b', 'event a' is the 
+    parent to 'event b' and 'event b' is shown under 'event a'. One graph shows the bottom layer of the events, 'Bottom-Up', and the other graph shows the 
     top layer of events, 'Top-Down'. This gives a view of what the renderer is doing underneath as well as on the surface level.</p>
 
     <div style="text-align: center;">
