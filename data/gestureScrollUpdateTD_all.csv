@@ -1,12 +1,12 @@
-rendererIdle,81.79186572
+rendererIdle,158.9392081
 TaskQueueManager::ProcessTaskFromWorkQueue,27.83834599
 EventDispatch,24.92725762
+uninteresting,23.08872665
 v8.run,14.41469887
 RunMicrotasks,13.79675762
 WebViewImpl::updateAllLifecyclePhases,13.37731158
 LocalFrameView::layout,12.3908589
 EvaluateScript,11.95452335
-uninteresting,11.54436332
 UpdateLayoutTree,9.563336406
 BlinkAXTreeSource::SerializeNode,7.768375246
 PageAnimator::serviceScriptedAnimations,7.559563913
@@ -16,5 +16,5 @@ ParseHTML,4.85000086
 TimerBase::run,4.828433751
 AccessibilityMsg_EventBundle_ACK,4.135046091
 ProxyMain::BeginMainFrame::commit,3.936003073
-RenderAccessibilityImpl::SendLocationChanges,3.201520403
-other,54.19999742
+UpdateLayerTree,2.859796829
+other,54.54172099

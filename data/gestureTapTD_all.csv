@@ -1,4 +1,4 @@
-rendererIdle,230.5788364
+rendererIdle,452.2091465
 EventHandler::handleGestureEvent,55.791272
 EventHandler::targetGestureEvent,44.64709736
 TaskQueueManager::ProcessTaskFromWorkQueue,42.45171362
@@ -13,8 +13,8 @@ EvaluateScript,7.488926062
 RenderAccessibilityImpl::SendLocationChanges,7.456040147
 ParseHTML,7.27422081
 UpdateLayerTree,6.760619605
+uninteresting,6.245651723
 RenderWidget::willBeginCompositorFrame,6.113198394
 ResourceFetcher::requestResource,5.820791235
 AccessibilityMsg_EventBundle_ACK,5.816286718
-V8.GCScavenger,5.221699565
-other,69.80726815
+other,71.38119237
