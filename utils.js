@@ -5,14 +5,15 @@ const LABEL_INDICES = {
 };
 
 // Generated from http://tools.medialab.sciences-po.fr/iwanthue/
-const COLORS = ["#a1455d", "#e27d8f", "#dc425b", "#ac4b3b",
-		"#d94b2d", "#e39771", "#c7682b", "#e19a37",
-		"#8f6631", "#ab8d37", "#bdba39", "#acb16c",
-		"#65702b", "#82a339", "#489a31", "#3c7832",
-		"#62c656", "#64b776", "#3a8864", "#5acea3",
-		"#41bab2", "#4dbcdf", "#6291d3", "#5c6fda",
-		"#6d64aa", "#9358ca", "#d18ecf", "#cb59c4",
-		"#9c4d87", "#d74590"];
+const COLORS = ["#ec3b80", "#da6084", "#d5858b", "#e15755",
+		"#e3612b", "#d77e53", "#c59171", "#e28f30",
+		"#ae822b", "#d1b26b", "#dbb433", "#878944",
+		"#aeb54b", "#99bd36", "#a0bd89", "#58973f",
+		"#60c250", "#55946d", "#50c886", "#61c8ac",
+		"#369c93", "#49cdd7", "#498e94", "#69bccb",
+		"#2f8fa5", "#4b95ba", "#7dc2eb", "#5e98d9",
+		"#6985e1", "#9080b0", "#9a75e3", "#cbaddf",
+		"#d366d1", "#c580bc", "#dc5fa9"];
 
 var GRAPH_DATA = {};
 var GRAPHS = {};
