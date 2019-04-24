@@ -2,7 +2,7 @@ V8.Execute,221.1447686
 V8.RunMicrotasks,30.35434988
 RunMicrotasks,23.53738675
 LocalFrameView::performLayout,16.25974647
-RenderAccessibilityImpl::SendPendingAccessibilityEvents	16.14425489
+RenderAccessibilityImpl::SendPendingAccessibilityEvents,16.14425489
 Document::recalcStyle,9.876027406
 Document::updateStyle,6.88478481
 FrameView::performLayout,6.430373971
