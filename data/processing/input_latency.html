@@ -50,152 +50,90 @@ tr.exportTo('pi.m', function() {
   ];
 
   function inputLatencyMapper(result, model) {
-    var results = [];
+    const results = [];
 
     const modelHelper = model.getOrCreateHelper(tr.model.helpers.ChromeModelHelper);
     const latencyEvents = getInputLatencyEvents(modelHelper.browserHelper);
 
     for (const latency of latencyEvents) {
-      var data = latency.args.data;
-      var id = (latency.id.startsWith(':ptr:') ? latency.id.slice(5) : latency.id);
-
-      // Latency duration will be the time when the latency event is dispatched to the renderer to when the rendering is scheduled
-      var latency_start = (data) ? model.convertTimestampToModelTime(
-                                   "traceEventClock",data["INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT"].time) : 0;
-      var latency_end = (data && data.hasOwnProperty("INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT")) ?
-                                       model.convertTimestampToModelTime("traceEventClock", 
-                                       data["INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT"].time) : 0;
-      var latency_duration = latency_end - latency_start;
-      var latency_mid = (data && data.hasOwnProperty("INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT")) ?
-                         model.convertTimestampToModelTime("traceEventClock", data["INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT"].time) : 0
+      const data = latency.args.data;
+      const id = (latency.id.startsWith(':ptr:') ? latency.id.slice(5) : latency.id);
+      latency.id = id;
+	
+      // Latency duration will be the time when the latency event is dispatched
+      // to the renderer to when the rendering is scheduled
+      const latencyStart = (data) ? model.convertTimestampToModelTime(
+          "traceEventClock",data["INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT"].time) : 0;
+      const latencyEnd = (data && data.hasOwnProperty("INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT")) ?
+            model.convertTimestampToModelTime(
+		"traceEventClock", 
+		data["INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT"].time) : 0;
+      const latencyMid = (data && data.hasOwnProperty("INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT")) ?
+            model.convertTimestampToModelTime(
+		"traceEventClock",
+		data["INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT"].time) : 0
+      const latencyDuration = latencyEnd - latencyStart;
 
       // Only look at completed latency events that are above the duration threshold
-      if (latency.inputLatency && latency_duration >= LATENCY_DURATION_THRESHOLD && latency_mid != 0) {
-        latency.id = id;
+      if (latency.inputLatency && latencyDuration >= LATENCY_DURATION_THRESHOLD && latencyMid != 0) {
+	const rendererProcess = getRendererProcessIdByLatency(latency);
+        const rendererEvents = getRendererEvents(modelHelper.browserHelper, rendererProcess);
+        const topLevel = getTopLevelSlices(rendererEvents);
 
-        // Get the top level events associated with this latency event
-        var model_indices = latency.startThread.parent.model.modelIndices;
-        var flow_events = model_indices.getFlowEventsWithId(id);
-        var associated_events = latency.associatedEvents;
-
-        // Get the renderer process id from the event that handles the input
-        var renderer_process, latency_middl;
-        for (const event of associated_events) {
-          if (event.hasOwnProperty('parentContainer') && event.title === 'RenderWidgetInputHandler::OnHandleInputEvent')
-            renderer_process = event.parentContainer.getProcess().pid;
-        }
-
-        // Get the top level slices of events happening on the renderer during the latency
-        var range_of_interest = new tr.b.math.Range.fromExplicitRange(latency_start, latency_end);
-        var renderer_events = getRendererEventsInRange(modelHelper.browserHelper, renderer_process, range_of_interest);
-        var top_level = getTopLevelSlices(renderer_events, latency_start, latency_end);
-        
-        // Bottom-Up approach
+	// Bottom-Up approach
         //
-        // For each event happening during the latency, take the trueDuration of the event
-        // where the trueDuration is the duration of the event minus the durations of its 
+        // For each event happening during the latency, take the selfTime of the event
+        // where the selfTime is the duration of the event minus the durations of its 
         // children. All events are split into a queuing and handling portion at the latency
         // mid point.
-        var expanded_events = [];
-        expandTopLevel(top_level, expanded_events, latency_start, latency_end);
+        const expandedEvents = [];
+	const queue = [];
+        const handle = [];
+        expandTopLevel(topLevel, expandedEvents, latencyStart, latencyEnd);
+	separateEvents(expandedEvents, queue, handle, latencyStart, latencyEnd, latencyMid);
 
-        var queue = [];
-        var handle = [];
-        var queue_active = 0;
-        var handle_active = 0;
-        for (const event of expanded_events) {
-          // Event is part of the queue portion
-          if (event.end < latency_mid) {
-            queue.push(event);
-	    queue_active += event.trueDuration;
-          // Event is part of the handle portion
-          } else if (event.start >= latency_mid) {
-            handle.push(event);
-            handle_active += event.trueDuration;
-          // Event is split between the two
-          } else {
-            var queue_portion = Object.assign({}, event);
-            var handle_portion = Object.assign({}, event);
-            
-            queue_portion.end = latency_mid;
-            queue_portion.trueDuration= getTrueDuration(queue_portion, latency_start, latency_mid);
-            handle_portion.start = latency_mid;
-            handle_portion.trueDuration = getTrueDuration(handle_portion, latency_mid, latency_end);
-
-            queue.push(queue_portion);
-            handle.push(handle_portion);
-            queue_active += queue_portion.trueDuration; 
-            handle_active += handle_portion.trueDuration
-          }
-        }
-
-        // Time where nothing is happening on the renderer is considered idle time
-        var queue_renderer_idle = (latency_mid - latency_start) - queue_active;
-        queue.push({"title":"rendererIdle", "trueDuration":queue_renderer_idle});
-        queue_active +=queue_renderer_idle;
-        var handle_renderer_idle = (latency_end - latency_mid) - handle_active;
-        handle.push({"title":"rendererIdle", "trueDuration":handle_renderer_idle});
-        handle_active += handle_renderer_idle;
+	// Calculate renderer idle time which is the duration of the latency
+	// where the renderer was not active at all
+	let queueActive = queue.reduce((prev,next) => prev + next["selfTime"],0);
+	let handleActive = handle.reduce((prev,next) => prev + next["selfTime"],0);
+	queue.push({"title":"rendererIdle", "selfTime":(latencyMid - latencyStart) - queueActive});
+        handle.push({"title":"rendererIdle", "selfTime":(latencyEnd - latencyMid) - handleActive});
 
         // Top-Down approach
         //
         // Starting at the top level slices, traverse down the slice
         // stack until finding an event that is not on the uninteresting
         // event list. 
-        var expanded_events_uninteresting = [];
-        expandTopLevelUninteresting(top_level, expanded_events_uninteresting, latency_start, latency_end, latency_mid);
-
-        var queue_uninteresting = [];
-        var handle_uninteresting = [];
-        var handle_active_uninteresting = 0;
-        var queue_active_uninteresting = 0;
-        for (const event of expanded_events_uninteresting) {
-          // Event is part of the queue portion
-          if (event.end < latency_mid) {
-            queue_uninteresting.push(event);
-            queue_active_uninteresting += event.duration;
-          // Event is part of the handle portion
-          } else if (event.start >= latency_mid) {
-            handle_uninteresting.push(event);
-            handle_active_uninteresting += event.duration;
-          // Event is split between the two
-          } else {
-            var queue_portion = Object.assign({}, event);
-            var handle_portion = Object.assign({}, event);
-
-            queue_portion.end = latency_mid;
-            handle_portion.start = latency_mid;
-            queue_portion.duration = latency_mid - queue_portion.start;
-            handle_portion.duration = handle_portion.end - latency_mid;
-
-            queue_uninteresting.push(queue_portion);
-            handle_uninteresting.push(handle_portion);
-            queue_active_uninteresting += queue_portion.duration;
-            handle_active_uninteresting += handle_portion.duration
-          }
-        }
+        const expandedEventsUninteresting = [];
+        const queueUninteresting = [];
+        const handleUninteresting = [];
+        expandTopLevelUninteresting(topLevel, expandedEventsUninteresting,latencyStart, latencyEnd, latencyMid);
+	separateEvents(expandedEventsUninteresting, queueUninteresting, handleUninteresting,
+		       latencyStart, latencyEnd, latencyMid, "Top-Down");
 
         // Add rendererIdle times, which are the same as the Bottom-Up approach
-        queue_uninteresting.push({"title":"rendererIdle", "duration":queue_renderer_idle});
-        handle_uninteresting.push({"title":"rendererIdle", "duration":handle_renderer_idle});
-        queue_active_uninteresting += queue_renderer_idle;
-        handle_active_uninteresting += handle_renderer_idle; 
-
+	queueUninteresting.push({"title":"rendererIdle", "duration":(latencyMid - latencyStart) - queueActive});
+        handleUninteresting.push({"title":"rendererIdle", "duration":(latencyEnd - latencyMid) - handleActive});
+	 	  
         // Calculate uninteresting time, which is all unaccounted for time (total time minus the 
         // active time, which are the events we consider interesting plus the time spent idle, what
         // remains is the time spent in uninteresting tasks) 
-        var queue_uninteresting_time = (latency_mid - latency_start) - queue_active_uninteresting;
-        queue_uninteresting.push({"title":"uninteresting", "duration":queue_uninteresting_time});        
-        queue_active_uninteresting += queue_uninteresting_time;
-        var handle_uninteresting_time = (latency_end - latency_mid) - handle_active_uninteresting;
-        handle_uninteresting.push({"title":"uninteresting", "duration":handle_uninteresting_time});
-        handle_active_uninteresting += handle_uninteresting_time;
-
-	results.push({"Latency Duration":latency_duration, "Queue Events Bottom-Up":mergeSameNameEvents(queue), 
-                      "Handling Events Bottom-Up":mergeSameNameEvents(handle), "Bottom-Up Event Sum":queue_active + handle_active, 
-                      "Queue Events Top-Down":mergeSameNameEvents(queue_uninteresting, "duration"), 
-                      "Handling Events Top-Down":mergeSameNameEvents(handle_uninteresting, "duration"), 
-                      "Top-Down Event Sum":queue_active_uninteresting + handle_active_uninteresting});
+	let queueActiveUninteresting = queueUninteresting.reduce((prev,next) => prev + next["duration"],0);
+	let handleActiveUninteresting = handleUninteresting.reduce((prev,next) => prev + next["duration"],0);
+        queueUninteresting.push({"title":"uninteresting",
+				  "duration":(latencyMid - latencyStart) - queueActiveUninteresting});        
+        handleUninteresting.push({"title":"uninteresting",
+			           "duration":(latencyEnd - latencyMid) - handleActiveUninteresting});
+	  
+	results.push({"Latency Duration":latencyDuration,
+		      "Queue Events Bottom-Up":mergeSameNameEvents(queue, "selfTime"), 
+		      "Handling Events Bottom-Up":mergeSameNameEvents(handle, "selfTime"),
+		      "Queue Events Top-Down":mergeSameNameEvents(queueUninteresting), 
+		      "Handling Events Top-Down":mergeSameNameEvents(handleUninteresting),
+		      "Bottom-Up Event Sum":queue.reduce((prev,next) => prev + next["selfTime"],0) +
+		      handle.reduce((prev,next) => prev + next["selfTime"],0),
+		      "Top-Down Event Sum":queueUninteresting.reduce((prev,next) => prev + next["duration"],0) +
+		      handleUninteresting.reduce((prev,next) => prev + next["duration"],0)});
       }
     }
     result.addPair("Latencies", results);
@@ -212,100 +150,131 @@ tr.exportTo('pi.m', function() {
     return browserHelper.getAllAsyncSlicesMatching(isInputLatencyEvent);
   }
 
-  function getRendererEventsInRange(browserHelper, rendererID, range_of_interest) {
+  // Get the id of the main renderer thread that handled the input of the latency
+  function getRendererProcessIdByLatency(latency) {
+    const modelIndices = latency.startThread.parent.model.modelIndices;
+    const associatedEvents = latency.associatedEvents;
+
+    for (const event of associatedEvents) {
+      if (event.hasOwnProperty('parentContainer') && event.parentContainer.name === 'CrRendererMain')
+        return event.parentContainer.getProcess().pid;
+    }
+  }
+
+  // Get all renderer events given an id 
+  function getRendererEvents(browserHelper, rendererID) {
     return browserHelper.getAllAsyncSlicesMatching(function(slice) {
       return (slice.parentContainer.getProcess().pid === rendererID &&
               slice.parentContainer.name === "CrRendererMain" && 
               slice.category != "disabled-by-default-renderer.scheduler" &&
               slice.category != "renderer.scheduler" &&
-              slice.category != "blink.animations,devtools.timeline,benchmark,rail" &&
-              slice.start >= range_of_interest.min &&
-              slice.end <= range_of_interest.max)
+              slice.category != "blink.animations,devtools.timeline,benchmark,rail")
     });
   }
 
-  // Given a set of slices, get all the top level slices within time bounds
-  function getTopLevelSlices(slices, start, end) {
-    var top_level = [];
+  // Given a set of slices, get all the top level slices
+  function getTopLevelSlices(slices) {
+    const topLevel = [];
     for (const slice of slices) {
       // If the top level slice is not already in the top level slices list
       if (typeof slice.mostTopLevelSlice !== "undefined"
-          && top_level.indexOf(slice.mostTopLevelSlice) === -1) {
-        top_level.push(slice.mostTopLevelSlice);
+          && topLevel.indexOf(slice.mostTopLevelSlice) === -1) {
+        topLevel.push(slice.mostTopLevelSlice);
       }
     }
-    return top_level;
+    return topLevel;
   }
 
   // Expand top level slices by getting true durations for all of the children slices recursively
-  function expandTopLevel(top_level_slices, expanded, start, end) {
-    for (const top_slice of top_level_slices) {
-      if (top_slice.start < end && top_slice.end > start) {
-        expanded.push({"title":top_slice.title, "duration":top_slice.duration, "trueDuration":getTrueDuration(top_slice, start, end), 
-                       "start":top_slice.start, "end":top_slice.start + top_slice.duration, "subSlices":top_slice.subSlices});
+  function expandTopLevel(topLevelSlices, expanded, start, end) {
+    for (const topSlice of topLevelSlices) {
+      // Slice should be within the latency start or end	  
+      if (topSlice.start < end && topSlice.end > start) {
+        expanded.push({"title":topSlice.title, "duration":topSlice.duration,
+		       "selfTime":getSelfTime(topSlice, start, end), 
+                       "start":topSlice.start,
+		       "end":topSlice.start + topSlice.duration,
+		       "subSlices":topSlice.subSlices});
       }
-      expandTopLevel(top_slice.subSlices, expanded, start, end);
+      expandTopLevel(topSlice.subSlices, expanded, start, end);
     }
   }
 
   // Expand top level slices by finding interesting slices and reporting their durations
-  function expandTopLevelUninteresting(top_level_slices, expanded, start, end, mid) {
-    for (const top_slice of top_level_slices) {
-      addInterestingEvents(top_slice, expanded, start, end, mid);
+  function expandTopLevelUninteresting(topLevelSlices, expanded, start, end, mid) {
+    for (const topSlice of topLevelSlices) {
+      addInterestingEvents(topSlice, expanded, start, end, mid);
     }
   }
 
   // Add event to a dictionary that is not on the uninteresting list and is bounded by the latency duration
-  function addInterestingEvents(top_slice, expanded, start, end, mid) {
-    if (isInterestingEvent(top_slice)) {
-      var s = top_slice.start;
-      var e = top_slice.start + top_slice.duration;
-      if (s < end && e > start) {
-        if (s < start) { s = start; };
-        if (e > end) { e = end; };
-        expanded.push({"title":top_slice.title, "duration":e - s, "start":s, "end":e, "subSlices":top_slice.subSlices});
+  function addInterestingEvents(topSlice, expanded, start, end, mid) {
+    if (UNINTERESTING_EVENTS.indexOf(topSlice.title) === -1) {
+      if (topSlice.start < end && topSlice.end > start) {
+	let sliceStart = Math.max(topSlice.start, start);
+	let sliceEnd = Math.min(topSlice.end, end);
+        expanded.push({"title":topSlice.title, "duration":sliceEnd - sliceStart,
+		       "start":sliceStart, "end":sliceEnd, "subSlices":topSlice.subSlices});
       }
     } else {
-      for (const child of top_slice.subSlices) {
+      for (const child of topSlice.subSlices) {
         addInterestingEvents(child, expanded, start, end, mid);
       }
       return;
     }
   }
 
-  function isInterestingEvent(event) {
-    for (const title of UNINTERESTING_EVENTS) {
-      if (event.title === title)
-        return false;
-    }
-    return true;
-  }
-
   // Get the duration of a latency event within the bounds of the latency
   // minus the duration of its children
-  function getTrueDuration(slice, lower_limit, upper_limit) {
-     var children_duration = 0;
-     for (const child of slice.subSlices) {
-       var s = child.start;
-       var e = child.end;
-       // Child is not within the bounds of the latency 
-       if (s > upper_limit || e < lower_limit) {
-         children_duration += 0;
-       } else {
-         if (s < lower_limit) { s = lower_limit; };
-         if (e > upper_limit) { e = upper_limit; };
-         var dur = ((e - s) > 0) ? e - s : 0;
-         children_duration += dur;
-       }
-     }
-     var slice_s = (slice.start < lower_limit) ? lower_limit : slice.start;
-     var slice_e = (slice.start + slice.duration > upper_limit) ? upper_limit : slice.start + slice.duration;
-     return (slice_e - slice_s) - children_duration;
+  function getSelfTime(slice, start, end) {
+    let childrenDuration = 0;
+    for (const child of slice.subSlices) {
+      // Child must be within bounds
+      if (child.start < end && child.end > start) {
+        let childStart = Math.max(child.start, start);
+	let childEnd = Math.min(child.end, end);
+        const dur = ((childEnd - childStart) > 0) ? childEnd - childStart : 0;
+        childrenDuration += dur;
+      }
+    }
+    let sliceStart = Math.max(slice.start, start);
+    let sliceEnd = Math.min(slice.end, end);
+    return (sliceEnd - sliceStart) - childrenDuration;
   }
 
+  // Sorts event list into queuing and handling 
+  function separateEvents(events, queue, handle,
+			  start, end, mid, approach="Bottom-Up") {
+    for (const event of events) {
+      // Event is part of the queuing time
+      if (event.end < mid) {
+	queue.push(event);
+      // Event is part of the handling time
+      } else if (event.start >= mid) {
+	handle.push(event);
+      // Event is split between the two
+      } else {
+	var queuePortion = Object.assign({}, event);
+	var handlePortion = Object.assign({}, event);  
+	queuePortion.end = mid;
+	handlePortion.start = mid;
+	  
+	if (approach === "Top-Down") {
+	  queuePortion.duration = mid - queuePortion.start;
+	  handlePortion.duration = handlePortion.end - mid;
+	} else {
+	  queuePortion.selfTime = getSelfTime(queuePortion, start, mid);
+	  handlePortion.selfTime = getSelfTime(handlePortion, mid, end);
+	}
+	queue.push(queuePortion);
+	handle.push(handlePortion);
+      }
+    }
+  }
+    
   // Sum durations of the same name events for a latency
-  function mergeSameNameEvents(events, duration = "trueDuration") {
-    var merged = {};
+  function mergeSameNameEvents(events, duration = "duration") {
+    const merged = {};
     for (const event of events) {
       if (merged.hasOwnProperty(event.title)) {
         merged[event.title] += event[duration];
@@ -314,6 +283,6 @@ tr.exportTo('pi.m', function() {
       }
     }
     return merged;
-  }
+  } 
 });
 </script>
