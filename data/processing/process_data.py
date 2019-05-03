@@ -5,8 +5,6 @@ import numpy as np
 import sys
 import argparse
 
-LATENCIES = 0
-
 def loadJSONfile(filename):
   traces = [];
   for line in open(filename, 'r'):
@@ -89,7 +87,7 @@ def createEventDicts(latencies, queue='Queue Events Bottom-Up', handle='Handling
 
   return queue_events, handle_events, all_events
 
-def computeEventStatistics(event_dict):
+def computeEventStatistics(event_dict, num_latencies):
   event_stats = {}
   total_occurences = 0
   for event in event_dict.keys():
@@ -99,7 +97,7 @@ def computeEventStatistics(event_dict):
     # To get the mean event duration across all the latencies
     # fill in a list with 0's for the latency events that do not
     # contain the given event.
-    zeros = [0] * (LATENCIES - len(event_dict[event]))
+    zeros = [0] * (num_latencies - len(event_dict[event]))
     zeroed = event_dict[event] + zeros
 
     event_stats[event]['zerod_mean'] = np.mean(zeroed)
@@ -122,19 +120,17 @@ def writeDataAsCSV(dictionary, filename):
     
     # Get the top 19 events by longest average duration, the 20th will be an other category
     sorted_keys = sorted(dictionary.keys(), key=lambda x: dictionary[x]['zerod_mean'], reverse=True)
-    count = 1
-    for event in sorted_keys:
-      if count == 20:
+    for count, event in enumerate(sorted_keys):
+      if count == 19:
         other_sum = sum(dictionary[item]['zerod_mean'] for item in sorted_keys[20:])
         writer.writerow(['other', other_sum])
         writer.writerow([])
         writer.writerow(['other:'])
-      else:
-        writer.writerow([event, dictionary[event]['zerod_mean'], dictionary[event]['mean'],
-                         dictionary[event]['median'], dictionary[event]['25th'],
-                         dictionary[event]['75th'], dictionary[event]['90th'],
-                         dictionary[event]['99th'], dictionary[event]['occurences']])
-      count+=1;
+
+      writer.writerow([event, dictionary[event]['zerod_mean'], dictionary[event]['mean'],
+                       dictionary[event]['median'], dictionary[event]['25th'],
+                       dictionary[event]['75th'], dictionary[event]['90th'],
+                       dictionary[event]['99th'], dictionary[event]['occurences']])
 
 def main():
   parser = argparse.ArgumentParser()
@@ -144,21 +140,18 @@ def main():
   traces = loadJSONfile(args.input_file)
   latencies = getLatencyEvents(traces)
 
-  global LATENCIES
-  LATENCIES = len(latencies)
-
   # Bottom-Up approach
   q, h, a = createEventDicts(latencies)
-  writeDataAsCSV(computeEventStatistics(q), args.input_file[:-5] + "_queue_averages.csv")
-  writeDataAsCSV(computeEventStatistics(h), args.input_file[:-5] + "_handle_averages.csv")
-  writeDataAsCSV(computeEventStatistics(a), args.input_file[:-5] + "_all_averages.csv")
+  writeDataAsCSV(computeEventStatistics(q, len(latencies)), args.input_file[:-5] + "_queue_averages.csv")
+  writeDataAsCSV(computeEventStatistics(h, len(latencies)), args.input_file[:-5] + "_handle_averages.csv")
+  writeDataAsCSV(computeEventStatistics(a, len(latencies)), args.input_file[:-5] + "_all_averages.csv")
 
   # Top-Down approach
   q, h, a = createEventDicts(latencies, queue='Queue Events Top-Down',
                              handle='Handling Events Top-Down')
-  writeDataAsCSV(computeEventStatistics(q), args.input_file[:-5] + "_queue_averages_top_down.csv")
-  writeDataAsCSV(computeEventStatistics(h), args.input_file[:-5] + "_handle_averages_top_down.csv")
-  writeDataAsCSV(computeEventStatistics(a), args.input_file[:-5] + "_all_averages_top_down.csv")
+  writeDataAsCSV(computeEventStatistics(q, len(latencies)), args.input_file[:-5] + "_queue_averages_top_down.csv")
+  writeDataAsCSV(computeEventStatistics(h, len(latencies)), args.input_file[:-5] + "_handle_averages_top_down.csv")
+  writeDataAsCSV(computeEventStatistics(a, len(latencies)), args.input_file[:-5] + "_all_averages_top_down.csv")
 
 if __name__ == "__main__":
   main()

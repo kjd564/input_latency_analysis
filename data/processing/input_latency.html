@@ -17,36 +17,36 @@ found in the LICENSE file.
 
 tr.exportTo('pi.m', function() {
 
-  var LATENCY_EVENT = "InputLatency::GestureScrollUpdate";  // Latency event to be analyzed
+  var LATENCY_EVENT = 'InputLatency::GestureScrollUpdate';  // Latency event to be analyzed
   var LATENCY_DURATION_THRESHOLD = 100;                     // How long the latency event must take in ms
   var UNINTERESTING_EVENTS = [                              // Events to be ignored in the top down approach
-    "ChannelMojo::OnMessageReceived",
-    "Event.Pipeline",
-    "EventHandler::HitTestResultAtLocation",
-    "FunctionCall",
-    "LatencyInfo.Flow",
-    "LocalFrameView::RunStyleAndLayoutLifecyclePhases",
-    "LocalFrameView::updateStyleAndLayoutIfNeededRecursive",
-    "LongTask",
-    "MessageLoop::RunTask",
-    "none",
-    "PendingScript::ExecuteScriptBlock",
-    "RenderWidgetInputHandler::OnHandleInputEvent",
-    "RunTask",
-    "ScheduledAction::execute",
-    "SequenceManagerImpl::TakeTask",
-    "TaskGraphRunner::RunTask",
-    "TaskScheduler RunTask",
-    "TaskQueueManager::DoWork",
-    "TaskQueueManager::ProcessTaskFromWorkQueue",
-    "TaskQueueManager::RunTask",
-    "ThreadController::Task",
-    "ThreadControllerImpl::DoWork",
-    "ThreadControllerImpl::RunTask",
-    "ThreadProxy::BeginMainFrame",
-    "unknown interface",
-    "WebViewImpl::beginFrame",
-    "WebViewImpl::handleInputEvent",
+    'ChannelMojo::OnMessageReceived',
+    'Event.Pipeline',
+    'EventHandler::HitTestResultAtLocation',
+    'FunctionCall',
+    'LatencyInfo.Flow',
+    'LocalFrameView::RunStyleAndLayoutLifecyclePhases',
+    'LocalFrameView::updateStyleAndLayoutIfNeededRecursive',
+    'LongTask',
+    'MessageLoop::RunTask',
+    'none',
+    'PendingScript::ExecuteScriptBlock',
+    'RenderWidgetInputHandler::OnHandleInputEvent',
+    'RunTask',
+    'ScheduledAction::execute',
+    'SequenceManagerImpl::TakeTask',
+    'TaskGraphRunner::RunTask',
+    'TaskScheduler RunTask',
+    'TaskQueueManager::DoWork',
+    'TaskQueueManager::ProcessTaskFromWorkQueue',
+    'TaskQueueManager::RunTask',
+    'ThreadController::Task',
+    'ThreadControllerImpl::DoWork',
+    'ThreadControllerImpl::RunTask',
+    'ThreadProxy::BeginMainFrame',
+    'unknown interface',
+    'WebViewImpl::beginFrame',
+    'WebViewImpl::handleInputEvent',
   ];
 
   function inputLatencyMapper(result, model) {
@@ -63,19 +63,19 @@ tr.exportTo('pi.m', function() {
       // Latency duration will be the time when the latency event is dispatched
       // to the renderer to when the rendering is scheduled
       const latencyStart = (data) ? model.convertTimestampToModelTime(
-          "traceEventClock",data["INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT"].time) : 0;
-      const latencyEnd = (data && data.hasOwnProperty("INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT")) ?
+          'traceEventClock',data['INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT'].time) : 0;
+      const latencyEnd = (data && data.hasOwnProperty('INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT')) ?
             model.convertTimestampToModelTime(
-		"traceEventClock", 
-		data["INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT"].time) : 0;
-      const latencyMid = (data && data.hasOwnProperty("INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT")) ?
+		'traceEventClock', 
+		data['INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT'].time) : 0;
+      const handleStart = (data && data.hasOwnProperty('INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT')) ?
             model.convertTimestampToModelTime(
-		"traceEventClock",
-		data["INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT"].time) : 0
+		'traceEventClock',
+		data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0
       const latencyDuration = latencyEnd - latencyStart;
 
       // Only look at completed latency events that are above the duration threshold
-      if (latency.inputLatency && latencyDuration >= LATENCY_DURATION_THRESHOLD && latencyMid != 0) {
+      if (latency.inputLatency && latencyDuration >= LATENCY_DURATION_THRESHOLD && handleStart != 0) {
 	const rendererProcess = getRendererProcessIdByLatency(latency);
         const rendererEvents = getRendererEvents(modelHelper.browserHelper, rendererProcess);
         const topLevel = getTopLevelSlices(rendererEvents);
@@ -90,53 +90,53 @@ tr.exportTo('pi.m', function() {
 	const queue = [];
         const handle = [];
         expandTopLevel(topLevel, expandedEvents, latencyStart, latencyEnd);
-	separateEvents(expandedEvents, queue, handle, latencyStart, latencyEnd, latencyMid);
+	separateEvents(expandedEvents, queue, handle, latencyStart, latencyEnd, handleStart);
 
 	// Calculate renderer idle time which is the duration of the latency
 	// where the renderer was not active at all
-	let queueActive = queue.reduce((prev,next) => prev + next["selfTime"],0);
-	let handleActive = handle.reduce((prev,next) => prev + next["selfTime"],0);
-	queue.push({"title":"rendererIdle", "selfTime":(latencyMid - latencyStart) - queueActive});
-        handle.push({"title":"rendererIdle", "selfTime":(latencyEnd - latencyMid) - handleActive});
+	let queueActive = queue.reduce((prev,next) => prev + next['selfTime'],0);
+	let handleActive = handle.reduce((prev,next) => prev + next['selfTime'],0);
+	queue.push({'title': 'rendererIdle', 'selfTime': (handleStart - latencyStart) - queueActive});
+        handle.push({'title': 'rendererIdle', 'selfTime': (latencyEnd - handleStart) - handleActive});
 
         // Top-Down approach
         //
         // Starting at the top level slices, traverse down the slice
-        // stack until finding an event that is not on the uninteresting
+        // stack until finding an event that is not on the interesting
         // event list. 
-        const expandedEventsUninteresting = [];
-        const queueUninteresting = [];
-        const handleUninteresting = [];
-        expandTopLevelUninteresting(topLevel, expandedEventsUninteresting,latencyStart, latencyEnd, latencyMid);
-	separateEvents(expandedEventsUninteresting, queueUninteresting, handleUninteresting,
-		       latencyStart, latencyEnd, latencyMid, "Top-Down");
+        const expandedEventsInteresting = [];
+        const queueInteresting = [];
+        const handleInteresting = [];
+        expandTopLevelInteresting(topLevel, expandedEventsInteresting,latencyStart, latencyEnd, handleStart);
+	separateEvents(expandedEventsInteresting, queueInteresting, handleInteresting,
+		       latencyStart, latencyEnd, handleStart, 'Top-Down');
 
         // Add rendererIdle times, which are the same as the Bottom-Up approach
-	queueUninteresting.push({"title":"rendererIdle", "duration":(latencyMid - latencyStart) - queueActive});
-        handleUninteresting.push({"title":"rendererIdle", "duration":(latencyEnd - latencyMid) - handleActive});
+	queueInteresting.push({'title': 'rendererIdle', 'duration': (handleStart - latencyStart) - queueActive});
+        handleInteresting.push({'title': 'rendererIdle', 'duration': (latencyEnd - handleStart) - handleActive});
 	 	  
-        // Calculate uninteresting time, which is all unaccounted for time (total time minus the 
+        // Calculate interesting time, which is all unaccounted for time (total time minus the 
         // active time, which are the events we consider interesting plus the time spent idle, what
-        // remains is the time spent in uninteresting tasks) 
-	let queueActiveUninteresting = queueUninteresting.reduce((prev,next) => prev + next["duration"],0);
-	let handleActiveUninteresting = handleUninteresting.reduce((prev,next) => prev + next["duration"],0);
-        queueUninteresting.push({"title":"uninteresting",
-				  "duration":(latencyMid - latencyStart) - queueActiveUninteresting});        
-        handleUninteresting.push({"title":"uninteresting",
-			           "duration":(latencyEnd - latencyMid) - handleActiveUninteresting});
+        // remains is the time spent in interesting tasks) 
+	let queueActiveInteresting = queueInteresting.reduce((prev,next) => prev + next['duration'],0);
+	let handleActiveInteresting = handleInteresting.reduce((prev,next) => prev + next['duration'],0);
+        queueInteresting.push({'title': 'interesting',
+				  'duration': (handleStart - latencyStart) - queueActiveInteresting});        
+        handleInteresting.push({'title': 'interesting',
+			           'duration': (latencyEnd - handleStart) - handleActiveInteresting});
 	  
-	results.push({"Latency Duration":latencyDuration,
-		      "Queue Events Bottom-Up":mergeSameNameEvents(queue, "selfTime"), 
-		      "Handling Events Bottom-Up":mergeSameNameEvents(handle, "selfTime"),
-		      "Queue Events Top-Down":mergeSameNameEvents(queueUninteresting), 
-		      "Handling Events Top-Down":mergeSameNameEvents(handleUninteresting),
-		      "Bottom-Up Event Sum":queue.reduce((prev,next) => prev + next["selfTime"],0) +
-		      handle.reduce((prev,next) => prev + next["selfTime"],0),
-		      "Top-Down Event Sum":queueUninteresting.reduce((prev,next) => prev + next["duration"],0) +
-		      handleUninteresting.reduce((prev,next) => prev + next["duration"],0)});
+	results.push({'Latency Duration': latencyDuration,
+		      'Queue Events Bottom-Up': mergeSameNameEvents(queue, 'selfTime'), 
+		      'Handling Events Bottom-Up': mergeSameNameEvents(handle, 'selfTime'),
+		      'Queue Events Top-Down': mergeSameNameEvents(queueInteresting), 
+		      'Handling Events Top-Down': mergeSameNameEvents(handleInteresting),
+		      'Bottom-Up Event Sum': queue.reduce((prev,next) => prev + next['selfTime'],0) +
+		      handle.reduce((prev,next) => prev + next['selfTime'],0),
+		      'Top-Down Event Sum': queueInteresting.reduce((prev,next) => prev + next['duration'],0) +
+		      handleInteresting.reduce((prev,next) => prev + next['duration'],0)});
       }
     }
-    result.addPair("Latencies", results);
+    result.addPair('Latencies', results);
   }
 
   tr.mre.FunctionRegistry.register(inputLatencyMapper);
@@ -152,7 +152,6 @@ tr.exportTo('pi.m', function() {
 
   // Get the id of the main renderer thread that handled the input of the latency
   function getRendererProcessIdByLatency(latency) {
-    const modelIndices = latency.startThread.parent.model.modelIndices;
     const associatedEvents = latency.associatedEvents;
 
     for (const event of associatedEvents) {
@@ -165,10 +164,10 @@ tr.exportTo('pi.m', function() {
   function getRendererEvents(browserHelper, rendererID) {
     return browserHelper.getAllAsyncSlicesMatching(function(slice) {
       return (slice.parentContainer.getProcess().pid === rendererID &&
-              slice.parentContainer.name === "CrRendererMain" && 
-              slice.category != "disabled-by-default-renderer.scheduler" &&
-              slice.category != "renderer.scheduler" &&
-              slice.category != "blink.animations,devtools.timeline,benchmark,rail")
+              slice.parentContainer.name === 'CrRendererMain' && 
+              slice.category != 'disabled-by-default-renderer.scheduler' &&
+              slice.category != 'renderer.scheduler' &&
+              slice.category != 'blink.animations,devtools.timeline,benchmark,rail')
     });
   }
 
@@ -177,7 +176,7 @@ tr.exportTo('pi.m', function() {
     const topLevel = [];
     for (const slice of slices) {
       // If the top level slice is not already in the top level slices list
-      if (typeof slice.mostTopLevelSlice !== "undefined"
+      if (typeof slice.mostTopLevelSlice !== 'undefined'
           && topLevel.indexOf(slice.mostTopLevelSlice) === -1) {
         topLevel.push(slice.mostTopLevelSlice);
       }
@@ -185,41 +184,39 @@ tr.exportTo('pi.m', function() {
     return topLevel;
   }
 
-  // Expand top level slices by getting true durations for all of the children slices recursively
+  // Expand top level slices by getting selfTime for all of the children slices recursively
   function expandTopLevel(topLevelSlices, expanded, start, end) {
     for (const topSlice of topLevelSlices) {
       // Slice should be within the latency start or end	  
       if (topSlice.start < end && topSlice.end > start) {
-        expanded.push({"title":topSlice.title, "duration":topSlice.duration,
-		       "selfTime":getSelfTime(topSlice, start, end), 
-                       "start":topSlice.start,
-		       "end":topSlice.start + topSlice.duration,
-		       "subSlices":topSlice.subSlices});
+        expanded.push({'title': topSlice.title, 'duration': topSlice.duration,
+		       'selfTime': getSelfTime(topSlice, start, end), 
+                       'start': topSlice.start,
+		       'end': topSlice.start + topSlice.duration,
+		       'subSlices': topSlice.subSlices});
       }
       expandTopLevel(topSlice.subSlices, expanded, start, end);
     }
   }
 
   // Expand top level slices by finding interesting slices and reporting their durations
-  function expandTopLevelUninteresting(topLevelSlices, expanded, start, end, mid) {
+  function expandTopLevelInteresting(topLevelSlices, expanded, start, end, handleStart) {
     for (const topSlice of topLevelSlices) {
-      addInterestingEvents(topSlice, expanded, start, end, mid);
+      addInterestingEvents(topSlice, expanded, start, end, handleStart);
     }
   }
 
-  // Add event to a dictionary that is not on the uninteresting list and is bounded by the latency duration
-  function addInterestingEvents(topSlice, expanded, start, end, mid) {
+  // Add event to a dictionary that is not on the interesting list and is bounded by the latency duration
+  function addInterestingEvents(topSlice, expanded, start, end, handleStart) {
     if (UNINTERESTING_EVENTS.indexOf(topSlice.title) === -1) {
       if (topSlice.start < end && topSlice.end > start) {
 	let sliceStart = Math.max(topSlice.start, start);
 	let sliceEnd = Math.min(topSlice.end, end);
-        expanded.push({"title":topSlice.title, "duration":sliceEnd - sliceStart,
-		       "start":sliceStart, "end":sliceEnd, "subSlices":topSlice.subSlices});
+        expanded.push({'title': topSlice.title, 'duration': sliceEnd - sliceStart,
+		       'start': sliceStart, 'end': sliceEnd});
       }
     } else {
-      for (const child of topSlice.subSlices) {
-        addInterestingEvents(child, expanded, start, end, mid);
-      }
+      expandTopLevelInteresting(topSlice.subSlices, expanded, start, end, handleStart)
       return;
     }
   }
@@ -233,8 +230,8 @@ tr.exportTo('pi.m', function() {
       if (child.start < end && child.end > start) {
         let childStart = Math.max(child.start, start);
 	let childEnd = Math.min(child.end, end);
-        const dur = ((childEnd - childStart) > 0) ? childEnd - childStart : 0;
-        childrenDuration += dur;
+	if (childEnd > childStart)
+          childrenDuration += childEnd - childStart;
       }
     }
     let sliceStart = Math.max(slice.start, start);
@@ -244,27 +241,27 @@ tr.exportTo('pi.m', function() {
 
   // Sorts event list into queuing and handling 
   function separateEvents(events, queue, handle,
-			  start, end, mid, approach="Bottom-Up") {
+			  start, end, handleStart, approach='Bottom-Up') {
     for (const event of events) {
       // Event is part of the queuing time
-      if (event.end < mid) {
+      if (event.end < handleStart) {
 	queue.push(event);
       // Event is part of the handling time
-      } else if (event.start >= mid) {
+      } else if (event.start >= handleStart) {
 	handle.push(event);
       // Event is split between the two
       } else {
 	var queuePortion = Object.assign({}, event);
 	var handlePortion = Object.assign({}, event);  
-	queuePortion.end = mid;
-	handlePortion.start = mid;
+	queuePortion.end = handleStart;
+	handlePortion.start = handleStart;
 	  
-	if (approach === "Top-Down") {
-	  queuePortion.duration = mid - queuePortion.start;
-	  handlePortion.duration = handlePortion.end - mid;
+	if (approach === 'Top-Down') {
+	  queuePortion.duration = handleStart - queuePortion.start;
+	  handlePortion.duration = handlePortion.end - handleStart;
 	} else {
-	  queuePortion.selfTime = getSelfTime(queuePortion, start, mid);
-	  handlePortion.selfTime = getSelfTime(handlePortion, mid, end);
+	  queuePortion.selfTime = getSelfTime(queuePortion, start, handleStart);
+	  handlePortion.selfTime = getSelfTime(handlePortion, handleStart, end);
 	}
 	queue.push(queuePortion);
 	handle.push(handlePortion);
@@ -273,7 +270,7 @@ tr.exportTo('pi.m', function() {
   }
     
   // Sum durations of the same name events for a latency
-  function mergeSameNameEvents(events, duration = "duration") {
+  function mergeSameNameEvents(events, duration = 'duration') {
     const merged = {};
     for (const event of events) {
       if (merged.hasOwnProperty(event.title)) {
