@@ -164,7 +164,17 @@ function createChart(input_event, title, event_data) {
       },
       tooltips: {
         titleFontSize: 20,
-	bodyFontSize: 20,
+	  bodyFontSize: 20,
+	  callbacks: {
+	    label: function(tooltipItem, data) {
+	      return data.datasets[tooltipItem.datasetIndex].label;
+	    },
+	    afterLabel: function(tooltipItem, data) {
+              var raw = GRAPH_DATA[input_event].raw.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+	      var normal = GRAPH_DATA[input_event].normal.datasets[tooltipItem.datasetIndex].data[tooltipItem.index];
+	      return ['Raw: ' + raw.toFixed(3).toString(), 'Normal: ' + normal.toFixed(3).toString()];
+	    }
+	  }
       },
       scales: {
         yAxes: [{
