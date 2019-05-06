@@ -1,5 +1,6 @@
-EventHandler::handleGestureScrollEvent,2.255620007
-InputMsg_HandleInputEvent,0.1677368809
-uninteresting,0.04839166771
-RunHighestPriorityTask,0.005736635124
-WebFrameWidgetImpl::handleInputEvent,0.000370283888
+EventHandler::handleGestureScrollEvent,1.83501231
+InputMsg_HandleInputEvent,0.2001017993
+rendererIdle,0.1773739346
+uninteresting,0.0463071733
+RunHighestPriorityTask,0.005639914773
+WebFrameWidgetImpl::handleInputEvent,0.0003566524617
