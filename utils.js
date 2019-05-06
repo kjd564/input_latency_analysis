@@ -30,18 +30,31 @@ async function generateGraph(input_event, title) {
   addDataPerEvent(all_parsed, raw, LABEL_INDICES.all);
   addDataPerEvent(normalize(all_parsed), normalized, LABEL_INDICES.all);
 
+  var all_sum = Object.keys(all_parsed).reduce((sum,key)=>sum+parseFloat(all_parsed[key]||0),0);
+      
   const queue = await fetch("data/" + input_event + "_queue.csv");
   const queue_text = await queue.text();
   var queue_parsed = parseCSVdata(queue_text);
   addDataPerEvent(queue_parsed, raw, LABEL_INDICES.queue);
   addDataPerEvent(normalize(queue_parsed), normalized, LABEL_INDICES.queue);
 
+  var queue_sum = Object.keys(queue_parsed).reduce((sum,key)=>sum+parseFloat(queue_parsed[key]||0),0);
+      
   const handle = await fetch("data/" + input_event + "_handle.csv");
   const handle_text = await handle.text();
   var handle_parsed = parseCSVdata(handle_text);
   addDataPerEvent(handle_parsed, raw, LABEL_INDICES.handle);
   addDataPerEvent(normalize(handle_parsed), normalized, LABEL_INDICES.handle);
 
+  var handle_sum = Object.keys(handle_parsed).reduce((sum,key)=>sum+parseFloat(handle_parsed[key]||0),0);
+
+  raw.labels = ['all: 100%',
+		'queue: ' + (queue_sum / all_sum).toFixed(3).toString() + '%',
+		'handle: ' + (handle_sum / all_sum).toFixed(3).toString() + '%'];
+  normalized.labels = ['all: 100%',
+		       'queue: ' + (queue_sum / all_sum).toFixed(3).toString() + '%',
+		       'handle: ' + (handle_sum / all_sum).toFixed(3).toString() + '%'];
+   
   createChart(input_event, title, raw);
 }
 
