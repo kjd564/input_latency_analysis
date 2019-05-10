@@ -48,12 +48,12 @@ async function generateGraph(input_event, title) {
 
   var handle_sum = Object.keys(handle_parsed).reduce((sum,key)=>sum+parseFloat(handle_parsed[key]||0),0);
 
-  raw.labels = ['all: 100%',
-		'queue: ' + (queue_sum / all_sum).toFixed(3).toString() + '%',
-		'handle: ' + (handle_sum / all_sum).toFixed(3).toString() + '%'];
+  raw.labels = ['all: ' + all_sum.toFixed(3).toString(),
+		'queue: ' + queue_sum.toFixed(3).toString(),
+		'handle: ' + handle_sum.toFixed(3).toString()];
   normalized.labels = ['all: 100%',
-		       'queue: ' + (queue_sum / all_sum).toFixed(3).toString() + '%',
-		       'handle: ' + (handle_sum / all_sum).toFixed(3).toString() + '%'];
+		       'queue: ' + ((queue_sum / all_sum) * 100).toFixed(3).toString() + '%',
+		       'handle: ' + ((handle_sum / all_sum) * 100).toFixed(3).toString() + '%'];
    
   createChart(input_event, title, raw);
 }
