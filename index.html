@@ -6,7 +6,7 @@
   <body>
     <h1>Input Latency Deep Reports Analysis</h1>
     <h2><i>kdillon@chromium.org</i></h2>
-    <h3>24 April 2019</h3>
+    <h3>21 March 2019</h3>
 
     <p>The data for these graphs was gathered from real-world trace collected during regular use on Android. 
     The graphs show what the main thread of the renderer is doing during a given input latency event. The duration of an 
@@ -27,7 +27,9 @@
     <p align="center">
       <a href="https://docs.google.com/spreadsheets/d/1yz8xiXQWwl8SCQbEwlh0XgT276HKUPHS6Le0udBtqUM/edit?usp=sharing">GestureScrollBegin Data</a>  |
       <a href="https://docs.google.com/spreadsheets/d/1pB-QGY4cTCp5cTqMs5FVvB0rZy0VkdM41q4o0GLcmcE/edit?usp=sharing">GestureScrollUpdate Data</a>  |
-      <a href="https://docs.google.com/spreadsheets/d/1mWUuPayOwodE2yi_tR_-t6mI87D22Yg74h-gos9yDgs/edit?usp=sharing">GestureTap Data</a>
+      <a href="https://docs.google.com/spreadsheets/d/1mWUuPayOwodE2yi_tR_-t6mI87D22Yg74h-gos9yDgs/edit?usp=sharing">GestureTap Data</a>  |
+      <a href="https://docs.google.com/spreadsheets/d/1K_Ve7O8XulJ3gkCppBUWImn4J85lmAWsEKPk1urRBJI/edit?usp=sharing">TouchStart Data</a>  |
+      <a href="https://docs.google.com/spreadsheets/d/151e3lARUypZ8r_WCzjMIHyYRL9_-SUObxhL94gSitFg/edit?usp=sharing">TouchEnd Data</a>
     </p>
     
     <div style="text-align: center;">
@@ -41,6 +43,10 @@
     <div id='gestureScrollUpdateTD'></div>
     <div id='gestureTap'></div>
     <div id='gestureTapTD'></div>
+    <div id='touchStart'></div>
+    <div id='touchStartTD'></div>
+    <div id='touchEnd'></div>
+    <div id='touchEndTD'></div>
 
     <script>
       generateGraph('gestureScrollBegin', 'Gesture Scroll Begin: Bottom-Up');
@@ -49,6 +55,10 @@
       generateGraph('gestureScrollUpdateTD', 'Gesture Scroll Update: Top-Down')
       generateGraph('gestureTap', 'Gesture Tap: Bottom-Up');
       generateGraph('gestureTapTD', 'Gesture Tap: Top-Down');
+      generateGraph('touchStart', 'Touch Start: Bottom-Up');
+      generateGraph('touchStartTD', 'Touch Start: Top-Down');
+      generateGraph('touchEnd', 'Touch End: Bottom-Up');
+      generateGraph('touchEndTD', 'Touch End: Top-Down');
     </script>
   </body>
 </html>
