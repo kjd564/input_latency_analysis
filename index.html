@@ -6,16 +6,16 @@
   <body>
     <h1>Input Latency Deep Reports Analysis</h1>
     <h2><i>kdillon@chromium.org</i></h2>
-    <h3>30 May 2019</h3>
+    <h3>6 August 2019</h3>
 
     <p>The data for these graphs was gathered from real-world trace collected during regular use on Android. 
-    The graphs show what the main thread of the renderer is doing during a given input latency event. The duration of an 
-    input latency event starts when that event is dispatched from the browser to the renderer and ends when the rendering effect
-    is scheduled. All data is from traces that took longer than 100ms.</p>
+      The graphs show what the main thread of the renderer is doing during a given input latency event. The duration of an 
+      input latency event starts when that event is dispatched from the browser to the renderer and ends when a frame is
+      committed as a result of the input event. All data is from traces that took longer than 100ms.</p>
     
     <p>Queuing time is the time from when the event is dispatched to the renderer to when the renderer begins to handle the event.</p>
 
-    <p>Handling time is the time from when the renderer begins to handle the event to when the rendering effect is scheduled.</p>
+    <p>Handling time is the time from when the renderer begins to handle the event to the associated main frame commit.</p>
 
     <p>Input latency trace event visualization:</p>
     <div style="text-align: center; padding-right: 5%"><img src="images/inputLatencyTraceDrawing.jpg"></img></div>
@@ -31,7 +31,8 @@
       <a href="https://docs.google.com/spreadsheets/d/1pB-QGY4cTCp5cTqMs5FVvB0rZy0VkdM41q4o0GLcmcE/edit?usp=sharing">GestureScrollUpdate Data</a>  |
       <a href="https://docs.google.com/spreadsheets/d/1mWUuPayOwodE2yi_tR_-t6mI87D22Yg74h-gos9yDgs/edit?usp=sharing">GestureTap Data</a>  |
       <a href="https://docs.google.com/spreadsheets/d/1K_Ve7O8XulJ3gkCppBUWImn4J85lmAWsEKPk1urRBJI/edit?usp=sharing">TouchStart Data</a>  |
-      <a href="https://docs.google.com/spreadsheets/d/151e3lARUypZ8r_WCzjMIHyYRL9_-SUObxhL94gSitFg/edit?usp=sharing">TouchEnd Data</a>
+      <a href="https://docs.google.com/spreadsheets/d/151e3lARUypZ8r_WCzjMIHyYRL9_-SUObxhL94gSitFg/edit?usp=sharing">TouchEnd Data</a>  |
+      <a href="https://docs.google.com/spreadsheets/d/17VbHiwuPiX9n-hVIs4ANpXKhkyZl10jnq2_-6-0IKuM/edit?usp=sharing">TouchMove Data</a>
     </p>
     
     <div style="text-align: center;">
@@ -49,6 +50,8 @@
     <div id='touchStartTD'></div>
     <div id='touchEnd'></div>
     <div id='touchEndTD'></div>
+    <div id='touchMove'></div>
+    <div id='touchMoveTD'></div>
 
     <script>
       generateGraph('gestureScrollBegin', 'Gesture Scroll Begin: Bottom-Up');
@@ -61,6 +64,8 @@
       generateGraph('touchStartTD', 'Touch Start: Top-Down');
       generateGraph('touchEnd', 'Touch End: Bottom-Up');
       generateGraph('touchEndTD', 'Touch End: Top-Down');
+      generateGraph('touchMove', 'Touch Move: Bottom-Up');
+      generateGraph('touchMoveTD', 'Touch Move: Top-Down');
     </script>
   </body>
 </html>
