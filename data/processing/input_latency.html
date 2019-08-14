@@ -17,7 +17,7 @@ found in the LICENSE file.
 
 tr.exportTo('pi.m', function() {
 
-  var LATENCY_EVENT = 'InputLatency::GestureScrollUpdate';  // Latency event to be analyzed
+  var LATENCY_EVENT = 'GestureScrollUpdate';                // Latency event to be analyzed
   var LATENCY_DURATION_THRESHOLD = 100;                     // How long the latency event must take in ms
   var UNINTERESTING_EVENTS = [                              // Events to be ignored in the top down approach
     'ChannelMojo::OnMessageReceived',
@@ -51,10 +51,11 @@ tr.exportTo('pi.m', function() {
 
   function inputLatencyMapper(result, model) {
     const results = [];
-
+    results.push(model.canonicalUrl)
+      
     const modelHelper = model.getOrCreateHelper(tr.model.helpers.ChromeModelHelper);
     const latencyEvents = getInputLatencyEvents(modelHelper.browserHelper);
-
+      
     for (const latency of latencyEvents) {
       const data = latency.args.data;
       const id = (latency.id.startsWith(':ptr:') ? latency.id.slice(5) : latency.id);
@@ -64,22 +65,20 @@ tr.exportTo('pi.m', function() {
       // to the renderer to when the rendering is scheduled
       const latencyStart = (data) ? model.convertTimestampToModelTime(
           'traceEventClock',data['INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT'].time) : 0;
-      const latencyEnd = (data && data.hasOwnProperty('INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT')) ?
-            model.convertTimestampToModelTime(
-		'traceEventClock', 
-		data['INPUT_EVENT_LATENCY_RENDERING_SCHEDULED_MAIN_COMPONENT'].time) : 0;
       const handleStart = (data && data.hasOwnProperty('INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT')) ?
-            model.convertTimestampToModelTime(
-		'traceEventClock',
-		data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0
+              model.convertTimestampToModelTime(
+		  'traceEventClock',
+		  data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0;
+      const latencyEnd = getHandleInputEventMainCommitTime(latency, handleStart);
       const latencyDuration = latencyEnd - latencyStart;
-
+	
       // Only look at completed latency events that are above the duration threshold
       if (latency.inputLatency && latencyDuration >= LATENCY_DURATION_THRESHOLD && handleStart != 0) {
 	const rendererProcess = getRendererProcessIdByLatency(latency);
-        const rendererEvents = getRendererEvents(modelHelper.browserHelper, rendererProcess);
+	const thread = getThreadByLatency(latency);
+	const rendererEvents = thread.sliceGroup.slices;
         const topLevel = getTopLevelSlices(rendererEvents);
-
+	  
 	// Bottom-Up approach
         //
         // For each event happening during the latency, take the selfTime of the event
@@ -120,10 +119,10 @@ tr.exportTo('pi.m', function() {
         // remains is the time spent in interesting tasks) 
 	let queueActiveInteresting = queueInteresting.reduce((prev,next) => prev + next['duration'],0);
 	let handleActiveInteresting = handleInteresting.reduce((prev,next) => prev + next['duration'],0);
-        queueInteresting.push({'title': 'interesting',
+        queueInteresting.push({'title': 'uninteresting',
 				  'duration': (handleStart - latencyStart) - queueActiveInteresting});        
-        handleInteresting.push({'title': 'interesting',
-			           'duration': (latencyEnd - handleStart) - handleActiveInteresting});
+        handleInteresting.push({'title': 'uninteresting',
+			        'duration': (latencyEnd - handleStart) - handleActiveInteresting});
 	  
 	results.push({'Latency Duration': latencyDuration,
 		      'Queue Events Bottom-Up': mergeSameNameEvents(queue, 'selfTime'), 
@@ -134,9 +133,10 @@ tr.exportTo('pi.m', function() {
 		      handle.reduce((prev,next) => prev + next['selfTime'],0),
 		      'Top-Down Event Sum': queueInteresting.reduce((prev,next) => prev + next['duration'],0) +
 		      handleInteresting.reduce((prev,next) => prev + next['duration'],0)});
+	  
       }
     }
-    result.addPair('Latencies', results);
+      result.addPair('Latencies', results);
   }
 
   tr.mre.FunctionRegistry.register(inputLatencyMapper);
@@ -146,7 +146,7 @@ tr.exportTo('pi.m', function() {
   };
 
   function getInputLatencyEvents(browserHelper) {
-    const isInputLatencyEvent = e => e.title === LATENCY_EVENT;
+    const isInputLatencyEvent = e => e.title === 'InputLatency::' + LATENCY_EVENT;
     return browserHelper.getAllAsyncSlicesMatching(isInputLatencyEvent);
   }
 
@@ -155,20 +155,39 @@ tr.exportTo('pi.m', function() {
     const associatedEvents = latency.associatedEvents;
 
     for (const event of associatedEvents) {
-      if (event.hasOwnProperty('parentContainer') && event.parentContainer.name === 'CrRendererMain')
+      if (event.title === 'RenderWidgetInputHandler::OnHandleInputEvent' &&
+	  event.args.hasOwnProperty('event') &&
+	  event.args.event === LATENCY_EVENT)	  
         return event.parentContainer.getProcess().pid;
     }
   }
 
-  // Get all renderer events given an id 
-  function getRendererEvents(browserHelper, rendererID) {
-    return browserHelper.getAllAsyncSlicesMatching(function(slice) {
-      return (slice.parentContainer.getProcess().pid === rendererID &&
-              slice.parentContainer.name === 'CrRendererMain' && 
-              slice.category != 'disabled-by-default-renderer.scheduler' &&
-              slice.category != 'renderer.scheduler' &&
-              slice.category != 'blink.animations,devtools.timeline,benchmark,rail')
-    });
+  // Get the name of the main renderer thread that handled the input of the latency
+  function getThreadByLatency(latency) {
+    const associatedEvents = latency.associatedEvents;
+
+    for (const event of associatedEvents) {
+      if (event.title === 'RenderWidgetInputHandler::OnHandleInputEvent' &&
+	  event.args.hasOwnProperty('event') &&
+	  event.args.event === LATENCY_EVENT)	  
+        return event.parentContainer;
+    }
+  }
+
+  // Find the flow event for handling input event main commit.
+  // This event will be the last main commit that happens
+  // before the end of the latency event.
+  function getHandleInputEventMainCommitTime(latency, mid) {
+    let commitTime = latency.start + latency.duration;
+    for (const event of latency.associatedEvents) {
+      if (event.title === 'LatencyInfo.Flow' &&
+	  event.args.step === 'HandleInputEventMainCommit' &&
+	  event.start > mid && event.selfTime && 
+	  (event.start + event.duration) < commitTime) {
+	  commitTime = event.start + event.duration;
+      }
+    }
+    return commitTime;
   }
 
   // Given a set of slices, get all the top level slices
