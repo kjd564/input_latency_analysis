@@ -17,9 +17,10 @@ found in the LICENSE file.
 
 tr.exportTo('pi.m', function() {
 
-  var LATENCY_EVENT = 'GestureScrollUpdate';                // Latency event to be analyzed
-  var LATENCY_DURATION_THRESHOLD = 100;                     // How long the latency event must take in ms
-  var UNINTERESTING_EVENTS = [                              // Events to be ignored in the top down approach
+  // TODO(kdillon) : parameterize mapper.
+  var LATENCY_EVENT = 'GestureScrollUpdate';  // Latency event to be analyzed.
+  var LATENCY_DURATION_THRESHOLD = 100;       // How long the latency event must take in ms.
+  var UNINTERESTING_EVENTS = [                // Events to be ignored in the top down approach.
     'ChannelMojo::OnMessageReceived',
     'Event.Pipeline',
     'EventHandler::HitTestResultAtLocation',
@@ -59,26 +60,27 @@ tr.exportTo('pi.m', function() {
       const data = latencyEvent.args.data;
       const id = (latencyEvent.id.startsWith(':ptr:') ? latencyEvent.id.slice(5) : latencyEvent.id);
       latencyEvent.id = id;
+      const modelIndices = model.modelIndices;
+      const flowEvents = modelIndices.getFlowEventsWithId(id);
 	
       // Latency duration will be the time when the latency event is dispatched
-      // to the renderer to when the rendering is scheduled
+      // to the renderer to when the rendering is scheduled.
       const latencyStart = (data) ? model.convertTimestampToModelTime(
           'traceEventClock',data['INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT'].time) : 0;
       const handleStart = (data && data.hasOwnProperty('INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT')) ?
               model.convertTimestampToModelTime(
 		  'traceEventClock',
-		  data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0;
-      const latencyEnd = getHandleInputEventMainCommitTime(latencyEvent, handleStart);
+		  data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0;	
+      const latencyEnd = getHandleInputEventMainCommitTime(flowEvents);
       const latencyDuration = latencyEnd - latencyStart;
 	
-      // Only look at completed latency events that are above the duration threshold
+      // Only look at completed latency events that are above the duration threshold.
       if (latencyEvent.inputLatency && latencyDuration >= LATENCY_DURATION_THRESHOLD && handleStart != 0) {
 	const thread = getThreadByLatency(latencyEvent);
 	const rendererEvents = thread.sliceGroup.slices;
         const topLevel = getTopLevelSlices(rendererEvents);
 	  
-	// Bottom-Up approach
-        //
+	// Bottom-Up approach.
         // For each event happening during the latency, take the selfTime of the event
         // where the selfTime is the duration of the event minus the durations of its 
         // children. All events are split into a queuing and handling portion at the latency
@@ -90,14 +92,13 @@ tr.exportTo('pi.m', function() {
 	separateEvents(expandedEvents, queue, handle, latencyStart, latencyEnd, handleStart);
 	  
 	// Calculate renderer idle time which is the duration of the latency
-	// where the renderer was not active at all
+	// where the renderer was not active at all.
 	let queueActive = queue.reduce((prev,next) => prev + next['selfTime'],0);
 	let handleActive = handle.reduce((prev,next) => prev + next['selfTime'],0);
 	queue.push({'title': 'rendererIdle', 'selfTime': (handleStart - latencyStart) - queueActive});
         handle.push({'title': 'rendererIdle', 'selfTime': (latencyEnd - handleStart) - handleActive});
 
-        // Top-Down approach
-        //
+        // Top-Down approach.
         // Starting at the top level slices, traverse down the slice
         // stack until finding an event that is not on the interesting
         // event list. 
@@ -108,7 +109,7 @@ tr.exportTo('pi.m', function() {
 	separateEvents(expandedEventsInteresting, queueInteresting, handleInteresting,
 		       latencyStart, latencyEnd, handleStart, 'Top-Down');
 
-        // Add rendererIdle times, which are the same as the Bottom-Up approach
+        // Add rendererIdle times, which are the same as the Bottom-Up approach.
 	queueInteresting.push({'title': 'rendererIdle', 'duration': (handleStart - latencyStart) - queueActive});
         handleInteresting.push({'title': 'rendererIdle', 'duration': (latencyEnd - handleStart) - handleActive});
 	 	  
@@ -121,8 +122,8 @@ tr.exportTo('pi.m', function() {
 				  'duration': (handleStart - latencyStart) - queueActiveInteresting});        
         handleInteresting.push({'title': 'uninteresting',
 			        'duration': (latencyEnd - handleStart) - handleActiveInteresting});
-
-	results.push({'latencyDuration': latencyDuration,
+	  
+	results.push({'latencyDuration': latencyDuration, 'bal':bal,
 		      'queueEventsBottomUp': mergeSameNameEvents(queue, 'selfTime'), 
 		      'handlingEventsBottomUp': mergeSameNameEvents(handle, 'selfTime'),
 		      'queueEventsTopDown': mergeSameNameEvents(queueInteresting), 
@@ -142,44 +143,57 @@ tr.exportTo('pi.m', function() {
     inputLatencyMapper,
   };
 
+  /**
+  * Get all of the input latency event slices from this trace of a given latency
+  * type (LATENCY_EVENT). 
+  * @param {ChromeBrowserHelper} browserHelper
+  * @return {Array<AsyncSlice>} Array of input latency event slices.
+  */
   function getInputLatencyEvents(browserHelper) {
     const isInputLatencyEvent = e => e.title === 'InputLatency::' + LATENCY_EVENT;
     return browserHelper.getAllAsyncSlicesMatching(isInputLatencyEvent);
   }
 
-  // Get renderer thread that handled the input of the latency
+  /**
+  * Get the renderer thread that handled a given input latency event.
+  * @param {AsyncSlice} latencyEvent
+  * @return {Thread} model thread.
+  */
   function getThreadByLatency(latencyEvent) {
     const associatedEvents = latencyEvent.associatedEvents;
-
     for (const event of associatedEvents) {
       if (event.title === 'RenderWidgetInputHandler::OnHandleInputEvent' &&
 	  event.args.hasOwnProperty('event') &&
 	  event.args.event === LATENCY_EVENT)	  
         return event.parentContainer;
     }
+    assertUnreached("Failed to get thread that handled the latency event.");
   }
 
-  // Find the flow event for handling input event main commit.
-  // This event will be the last main commit that happens
-  // before the end of the latency event.
-  function getHandleInputEventMainCommitTime(latencyEvent, mid) {
-    let commitTime = latencyEvent.start + latencyEvent.duration;
-    for (const event of latencyEvent.associatedEvents) {
-      if (event.title === 'LatencyInfo.Flow' &&
-	  event.args.step === 'HandleInputEventMainCommit' &&
-	  event.start > mid && event.selfTime && 
-	  (event.start + event.duration) < commitTime) {
-	  commitTime = event.start + event.duration;
+  /**
+  * Find the flow event that tracks the handle input event main commit and return
+  * it's end time. This will be used as the end of the latency event.
+  * @param {Array<AsyncSlice>} flowEvents
+  * @return {float} commitTime (ie end of commit) in ms.
+  */
+    function getHandleInputEventMainCommitTime(flowEvents) {
+      for (const event of flowEvents) {
+	  if (event.args.step === 'HandleInputEventMainCommit') 
+	      return event.start + event.duration;
       }
-    }
-    return commitTime;
   }
-
-  // Given a set of slices, get all the top level slices
+    
+  /**
+  * Takes an array of slices and returns all of the slices that are the topmost
+  * slices (slices that have no parent slices).
+  * @param {Array<AsyncSlice>} slices
+  * @return {Array<AsyncSlice>} topLevel
+  */
   function getTopLevelSlices(slices) {
     const topLevel = [];
     for (const slice of slices) {
-      // If the top level slice is not already in the top level slices list
+	// If the slice is not already in the top level slices list and it is a top
+	// slice, add it.
       if (typeof slice.mostTopLevelSlice !== 'undefined'
           && topLevel.indexOf(slice.mostTopLevelSlice) === -1) {
         topLevel.push(slice.mostTopLevelSlice);
@@ -187,11 +201,20 @@ tr.exportTo('pi.m', function() {
     }
     return topLevel;
   }
-
-  // Expand top level slices by getting selfTime for all of the children slices recursively
+    
+  /**
+  * This function takes an array of top level slices and expands them, gathering
+  * all of the children slices into a new array. It also truncates the slices so
+  * that their durations fall within the bounds of the latency. 
+  * @param {Array<AsyncSlice>} topLevelSlices
+  * @param {Array<Object>} expanded This object is a shortened representation
+  *     of an async slice containing the infromation relevant to the analysis.
+  *     This array is populated as the function recurses. 
+  * @param {float} start Measured in milliseconds.
+  * @param {float} end Measured in milliseconds.
+  */
   function expandTopLevel(topLevelSlices, expanded, start, end) {
     for (const topSlice of topLevelSlices) {
-      // Slice should be within the latency start or end	  
       if (topSlice.start < end && topSlice.end > start) {
         expanded.push({'title': topSlice.title, 'duration': topSlice.duration,
 		       'selfTime': getSelfTime(topSlice, start, end), 
@@ -203,14 +226,39 @@ tr.exportTo('pi.m', function() {
     }
   }
 
-  // Expand top level slices by finding interesting slices and reporting their durations
+  /**
+  * This function is the same as expandTopLevel but it traverses down the parent
+  * slices until it finds a slice that is interesting, ie any slice that is not 
+  * in UNINTERESTING_EVENTS, adds that slice to expanded, and stops moving down
+  * the tree as opposed to adding all child slices.
+  * @param {Array<AsyncSlice>} topLevelSlices
+  * @param {Array<Object>} expanded This object is a shortened representation
+  *     of an async slice containing the infromation relevant to the analysis.
+  *     This array is populated as the function recurses. 
+  * @param {float} start Measured in milliseconds.
+  * @param {float} end Measured in milliseconds.
+  * @param {float} handleStart Measured in milliseconds. Denotes when the 
+  *     renderer began to handle the input.
+  */
   function expandTopLevelInteresting(topLevelSlices, expanded, start, end, handleStart) {
     for (const topSlice of topLevelSlices) {
       addInterestingEvents(topSlice, expanded, start, end, handleStart);
     }
   }
 
-  // Add event to a dictionary that is not on the interesting list and is bounded by the latency duration
+  /**
+  * This function recurses until it finds an interesting slice, calling 
+  * expandTopLevelInteresting on a slices children if the slice itself is not 
+  * intersting, and then adds those slices to expanded.
+  * @param {Array<AsyncSlice>} topLevelSlices
+  * @param {Array<Object>} expanded This object is a shortened representation
+  *     of an async slice containing the infromation relevant to the analysis.
+  *     This array is populated as the function recurses. 
+  * @param {float} start Measured in milliseconds.
+  * @param {float} end Measured in milliseconds.
+  * @param {float} handleStart Measured in milliseconds. Denotes when the 
+  *     renderer began to handle the input.
+  */
   function addInterestingEvents(topSlice, expanded, start, end, handleStart) {
     if (UNINTERESTING_EVENTS.indexOf(topSlice.title) === -1) {
       if (topSlice.start < end && topSlice.end > start) {
@@ -225,12 +273,17 @@ tr.exportTo('pi.m', function() {
     }
   }
 
-  // Get the duration of a latency event within the bounds of the latency
-  // minus the duration of its children
+  /**
+  * Calcuates a given slices self time which is the slices duration, bounded
+  *     by the latency event, minus any child durations.
+  * @param {AsyncSlice} slice
+  * @param {float} start Measured in ms.
+  * @param {float} end Measured in ms.
+  * @return {float} the slices self time.
+  */
   function getSelfTime(slice, start, end) {
     let childrenDuration = 0;
     for (const child of slice.subSlices) {
-      // Child must be within bounds
       if (child.start < end && child.end > start) {
         let childStart = Math.max(child.start, start);
 	let childEnd = Math.min(child.end, end);
@@ -243,7 +296,22 @@ tr.exportTo('pi.m', function() {
     return (sliceEnd - sliceStart) - childrenDuration;
   }
 
-  // Sorts event list into queuing and handling 
+  /**
+  * This function sorts a list of event objects into queuing and handling.
+  * Queuing time is the time from the start of the latency to the middle, or when
+  * the input is handled. Handling time is from the middle to the end. This 
+  * breaks down a latency event events into these two categories.
+  * @param {Array<Object>} events 
+  * @param {Array<Object>} queue
+  * @param {Array<Object>} handle
+  * @param {float} start Measured in milliseconds.
+  * @param {float} end Measured in milliseconds.
+  * @param {float} handleStart Measured in milliseconds. Denotes when the 
+  *     renderer began to handle the input.
+  * @param {string} approach This string indicates which approach we are taking.
+  *     Bottom-up looks at self times and Top-Down looks at duration.
+  * @return {Thread} model thread.
+  */
   function separateEvents(events, queue, handle,
 			  start, end, handleStart, approach='Bottom-Up') {
     for (const event of events) {
@@ -272,8 +340,14 @@ tr.exportTo('pi.m', function() {
       }
     }
   }
-    
-  // Sum durations of the same name events for a latency
+
+  /**
+  * For each latency event, merge all of the durations of events that have the
+  * same name. This will give us the total time that any given function took 
+  * over the course of the entire latency.
+  * @param {Array<Object>} events
+  * @return {Array<Object>} list of merged events.
+  */
   function mergeSameNameEvents(events, duration = 'duration') {
     const merged = {};
     for (const event of events) {
@@ -284,6 +358,15 @@ tr.exportTo('pi.m', function() {
       }
     }
     return merged;
-  } 
+  }
+
+  /**
+  * Function for throwing error in the event that an assert fails.
+  * @param {boolean} condition
+  * @param {string} message
+  */
+  function assertUnreached(message) {
+    throw new Error(message);
+  }
 });
 </script>
