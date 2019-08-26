@@ -16,7 +16,7 @@ def loadJSONfile(filename):
       continue
 
     # Toss out traces with no latency data
-    if (len(trace['failures']) == 0 and len(trace['pairs']['Latencies']) > 0):
+    if (len(trace['failures']) == 0 and len(trace['pairs']['latencyEvents']) > 0):
         traces.append(trace)
 
   return traces
@@ -25,12 +25,12 @@ def loadJSONfile(filename):
 def getLatencyEvents(traces):
   latencies = []
   for trace in traces:
-    for latency in trace['pairs']['Latencies']:
+    for latency in trace['pairs']['latencyEvents']:
       latencies.append(latency)
   return latencies
 
 # Get all of the event names across all of the latency events
-def getAllEventNames(latencies, queue='Queue Events Bottom-Up', handle='Handling Events Bottom-Up'):
+def getAllEventNames(latencies, queue='queueEventsBottomUp', handle='handlingEventsBottomUp'):
   events = {'queue':[], 'handle':[]}
   for latency in latencies:
     for event_title in latency[queue].keys():
@@ -46,7 +46,7 @@ def getAllEventNames(latencies, queue='Queue Events Bottom-Up', handle='Handling
 # Creates a dictionary of events and their durations for every latency event
 # This dictionary has an entry for each event with a list of the durations for 
 # that event across all of the latency events being analyzed. 
-def createEventDicts(latencies, queue='Queue Events Bottom-Up', handle='Handling Events Bottom-Up'):
+def createEventDicts(latencies, queue='queueEventsBottomUp', handle='handlingEventsBottomUp'):
   names = getAllEventNames(latencies, queue=queue, handle=handle)
 
   # Sort Queue event durations into the queuing dictionary
@@ -147,8 +147,8 @@ def main():
   writeDataAsCSV(computeEventStatistics(a, len(latencies)), args.input_file[:-5] + "_all_averages.csv")
 
   # Top-Down approach
-  q, h, a = createEventDicts(latencies, queue='Queue Events Top-Down',
-                             handle='Handling Events Top-Down')
+  q, h, a = createEventDicts(latencies, queue='queueEventsTopDown',
+                             handle='handlingEventsTopDown')
   writeDataAsCSV(computeEventStatistics(q, len(latencies)), args.input_file[:-5] + "_queue_averages_top_down.csv")
   writeDataAsCSV(computeEventStatistics(h, len(latencies)), args.input_file[:-5] + "_handle_averages_top_down.csv")
   writeDataAsCSV(computeEventStatistics(a, len(latencies)), args.input_file[:-5] + "_all_averages_top_down.csv")
