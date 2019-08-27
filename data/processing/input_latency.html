@@ -197,11 +197,11 @@ tr.exportTo('pi.m', function() {
   * @param {Array<AsyncSlice>} flowEvents
   * @return {float} commitTime (ie end of commit) in ms.
   */
-    function getHandleInputEventMainCommitTime(flowEvents) {
-      for (const event of flowEvents) {
-	  if (event.args.step === 'HandleInputEventMainCommit') 
-	      return event.start + event.duration;
-      }
+  function getHandleInputEventMainCommitTime(flowEvents) {
+    for (const event of flowEvents) {
+      if (event.args.step === 'HandleInputEventMainCommit') 
+        return event.start + event.duration;
+    }
   }
     
   /**
