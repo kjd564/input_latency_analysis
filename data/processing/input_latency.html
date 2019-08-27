@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <!--
-Copyright 2016 The Chromium Authors. All rights reserved.
+Copyright 2019 The Chromium Authors. All rights reserved.
 Use of this source code is governed by a BSD-style license that can be
 found in the LICENSE file.
 -->
@@ -84,14 +84,15 @@ tr.exportTo('pi.m', function() {
       const modelIndices = model.modelIndices;
       const flowEvents = modelIndices.getFlowEventsWithId(id);
 	
-      // Latency duration will be the time when the latency event is dispatched
-      // to the renderer to when the rendering is scheduled.
+      // Latency event starts when the input hits the renderer.
       const latencyStart = (data) ? model.convertTimestampToModelTime(
           'traceEventClock',data['INPUT_EVENT_LATENCY_BEGIN_RWH_COMPONENT'].time) : 0;
+      // Latency event midpoint, when the renderer begins to handle the input event.
       const handleStart = (data && data.hasOwnProperty('INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT')) ?
               model.convertTimestampToModelTime(
 		  'traceEventClock',
-		  data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0;	
+		  data['INPUT_EVENT_LATENCY_RENDERER_MAIN_COMPONENT'].time) : 0;
+      // Latency event ends when a frame is committed. 
       const latencyEnd = getHandleInputEventMainCommitTime(flowEvents);
       const latencyDuration = latencyEnd - latencyStart;
 	
@@ -102,17 +103,17 @@ tr.exportTo('pi.m', function() {
         const topLevel = getTopLevelSlices(rendererEvents);
 	  
 	// Bottom-Up approach.
-        // For each event happening during the latency, take the selfTime of the event
-        // where the selfTime is the duration of the event minus the durations of its 
-        // children. All events are split into a queuing and handling portion at the latency
-        // mid point.
+        // For each event happening during the latency event, take the selfTime
+        // of the event where the selfTime is the duration of the event minus
+	// the durations of its children. All events are split into a queuing
+	// and handling portion at the latency events mid point.
         const expandedEvents = [];
 	const queue = [];
         const handle = [];
         expandTopLevel(topLevel, expandedEvents, latencyStart, latencyEnd);
 	separateEvents(expandedEvents, queue, handle, latencyStart, latencyEnd, handleStart);
 	  
-	// Calculate renderer idle time which is the duration of the latency
+	// Calculate renderer idle time or the duration of the latency event
 	// where the renderer was not active at all.
 	let queueActive = queue.reduce((prev,next) => prev + next['selfTime'],0);
 	let handleActive = handle.reduce((prev,next) => prev + next['selfTime'],0);
@@ -193,15 +194,15 @@ tr.exportTo('pi.m', function() {
 
   /**
   * Find the flow event that tracks the handle input event main commit and return
-  * it's end time. This will be used as the end of the latency event.
+  * its end time. This will be used as the end of the latency event.
   * @param {Array<AsyncSlice>} flowEvents
   * @return {float} commitTime (ie end of commit) in ms.
   */
-  function getHandleInputEventMainCommitTime(flowEvents) {
-    for (const event of flowEvents) {
-      if (event.args.step === 'HandleInputEventMainCommit') 
-        return event.start + event.duration;
-    }
+    function getHandleInputEventMainCommitTime(flowEvents) {
+      for (const event of flowEvents) {
+	  if (event.args.step === 'HandleInputEventMainCommit') 
+	      return event.start + event.duration;
+      }
   }
     
   /**
@@ -318,10 +319,9 @@ tr.exportTo('pi.m', function() {
   }
 
   /**
-  * This function sorts a list of event objects into queuing and handling.
-  * Queuing time is the time from the start of the latency to the middle, or when
-  * the input is handled. Handling time is from the middle to the end. This 
-  * breaks down a latency event events into these two categories.
+  * This function sorts a list of event objects into queue and handle.
+  * Queuing time is the time from the |start| to |middle| and handling time is
+  * from |middle| to |end|. Events are sorted into these two categories.
   * @param {Array<Object>} events 
   * @param {Array<Object>} queue
   * @param {Array<Object>} handle
@@ -365,7 +365,7 @@ tr.exportTo('pi.m', function() {
   /**
   * For each latency event, merge all of the durations of events that have the
   * same name. This will give us the total time that any given function took 
-  * over the course of the entire latency.
+  * over the course of the entire latency event.
   * @param {Array<Object>} events
   * @return {Array<Object>} list of merged events.
   */
