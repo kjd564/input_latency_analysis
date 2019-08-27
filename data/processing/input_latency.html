@@ -17,7 +17,7 @@ found in the LICENSE file.
 
 tr.exportTo('pi.m', function() {
 
-  // TODO(kdillon) : parameterize mapper.
+  // TODO(kdillon) : parameterize this mapper.
   var LATENCY_EVENT = 'GestureScrollUpdate';  // Latency event to be analyzed.
   var LATENCY_DURATION_THRESHOLD = 100;       // How long the latency event must take in ms.
   var UNINTERESTING_EVENTS = [                // Events to be ignored in the top down approach.
@@ -50,6 +50,27 @@ tr.exportTo('pi.m', function() {
     'WebViewImpl::handleInputEvent',
   ];
 
+  /**
+  * Mapper to collect data on input latency events. This mapper looks at all of
+  * the events that happened on the renderer during an input latency event in 
+  * order to find which functions and callbacks contributed to the latency. The
+  * output of the mapper is a JSON file containing information per trace:
+  *
+  * {
+  *   "failures": [],
+  *   "pairs": {
+  *     "latencyEvents" : [ { latencyDuration : "..." , 
+  *                           queueEventsBottomUp : [ ... ], 
+  *		              handlingEventsBottomUp : [ ... ], 
+  *		              queueEventsTopDown : [ ... ],
+  *		              handlingEventsTopDown : [ ... ],
+  *		              bottomUpEventSum : [ ... ],		      
+  *		              topDownEventSum : } , ...
+  *                       ],
+  *     "metadata" : { "canonicalUrl" : "foo" }
+  *   }
+  * }
+  */
   function inputLatencyMapper(result, model) {
     const results = [];
       
@@ -123,7 +144,7 @@ tr.exportTo('pi.m', function() {
         handleInteresting.push({'title': 'uninteresting',
 			        'duration': (latencyEnd - handleStart) - handleActiveInteresting});
 	  
-	results.push({'latencyDuration': latencyDuration, 'bal':bal,
+	results.push({'latencyDuration': latencyDuration,
 		      'queueEventsBottomUp': mergeSameNameEvents(queue, 'selfTime'), 
 		      'handlingEventsBottomUp': mergeSameNameEvents(handle, 'selfTime'),
 		      'queueEventsTopDown': mergeSameNameEvents(queueInteresting), 
